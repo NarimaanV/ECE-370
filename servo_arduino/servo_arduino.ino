@@ -13,6 +13,7 @@
 const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
              degrees_per_tick = 360.0 / (4.0 * 75.81),  // 1.1872
              K_p = 0.1;
+
 long desired_angle, angle, desired_ticks, ticks, error, cur_speed;
 unsigned long tick_time, tock_time, desired_control_time = 50000;
 short new_input = 1;
@@ -20,12 +21,14 @@ short new_input = 1;
 int set_speed(float s);
 void set_velocity(float v);
 
+// Enumeration of possible rotation directions
 volatile enum dir
 {
   CW = -1,
   CCW = 1
 } dir_cur;
 
+// Struct to store values of both IR sensors for a given state
 struct state
 {
   short a;
@@ -49,7 +52,10 @@ void loop()
 {
   while(1)
   {
+    // Get time at beginning of P controller loop
     tick_time = micros();
+
+    // Wait for angle to be sent via serial
     if (new_input)
     {
       if (Serial1.available())
@@ -67,19 +73,20 @@ void loop()
       }
     }
 
+    // Actually try getting to that angle
     else
     {
       error = desired_ticks - ticks;
-      Serial.print("Error: ");
-      Serial.println(error);
       cur_speed = error * K_p * dir_cur;
-      Serial.print("Speed: ");
-      Serial.println(cur_speed);
       set_velocity(cur_speed);
       if (error < 3)
         new_input = 1;
     }
+
+    // Get time at end of P controller loop
     tock_time = micros();
+
+    // Ensure at least the minimum delay has occured for P controller loop
     delayMicroseconds(desired_control_time - (tock_time - tick_time));
   }
 }
@@ -116,10 +123,14 @@ void set_velocity(float v)
   }
 }
 
+// ISR for every edge of the IR sensors that also uses a state machine to determine current direction.
 void ir_isr()
 {
+  // Shift current state to previous state
   state_prev.a = state_cur.a;
   state_prev.b = state_cur.b;
+
+  // Save new current state
   state_cur.a = digitalRead(IR_A);
   state_cur.b = digitalRead(IR_B);
   if (error < 0.0)
