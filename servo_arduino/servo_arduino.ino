@@ -10,11 +10,11 @@
  * Therefore, (4 ticks/input_rev * 75.81 input_rev/output_rev)/360 degrees/output_rev = 0.8423 ticks/degree
  * and 360 degrees/output_rev/(4 ticks/input_rev * 75.81 input_rev/output_rev) = 1.1872 degrees/tick
  */
-const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
-             degrees_per_tick = 360.0 / (4.0 * 75.81),  // 1.1872
+const double ticks_per_degree = (8.0 * 75.81) / 360.0,  // 0.8423
+             degrees_per_tick = 360.0 / (8.0 * 75.81),  // 1.1872
              K_p = 0.1;
 
-long desired_angle, angle, desired_ticks, ticks, error, cur_speed;
+long desired_angle, angle, desired_ticks, ticks = 0, error, cur_speed;
 unsigned long tick_time, tock_time, desired_control_time = 50000;
 short new_input = 1;
 
@@ -64,7 +64,6 @@ void loop()
         desired_ticks = (int)((double)desired_angle * ticks_per_degree);
         if (desired_ticks < 0)
           desired_ticks *= -1;
-        ticks = 0;
         if (desired_angle > 0)
           dir_cur = CCW;
         else
@@ -77,17 +76,21 @@ void loop()
     else
     {
       error = desired_ticks - ticks;
+      
       cur_speed = error * K_p * dir_cur;
       set_velocity(cur_speed);
       if (error < 3)
         new_input = 1;
     }
 
+    Serial.println(ticks * degrees_per_tick);
+    set_velocity(1.0);
+
     // Get time at end of P controller loop
     tock_time = micros();
 
     // Ensure at least the minimum delay has occured for P controller loop
-    delayMicroseconds(desired_control_time - (tock_time - tick_time));
+//    delayMicroseconds(desired_control_time - (tock_time - tick_time));
   }
 }
 
@@ -133,10 +136,10 @@ void ir_isr()
   // Save new current state
   state_cur.a = digitalRead(IR_A);
   state_cur.b = digitalRead(IR_B);
-  if (error < 0.0)
-    ticks--;
-  else
+  if (dir_cur == CW)
     ticks++;
+  else
+    ticks--;
 
   if (!state_prev.a && !state_prev.b)
   {
