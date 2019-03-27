@@ -13,7 +13,8 @@
  */
 const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
              degrees_per_tick = 360.0 / (4.0 * 75.81);  // 1.1872
-long desired_angle, angle, desired_ticks, ticks;
+long desired_angle, angle, desired_ticks, ticks, error;
+unsigned long tick_time, tock_time, desired_control_time = 20000;
 short new_input = 1;
 
 int set_speed(float s);
@@ -48,6 +49,7 @@ void loop()
 {
   while(1)
   {
+    tick_time = micros();
     if (new_input)
     {
       if (Serial.available())
@@ -60,7 +62,12 @@ void loop()
     else
     {
       error = desired_ticks - ticks;
+      set_velocity(error*KP*dir_cur);
+      if (error < 5)
+        new_input = 1;
     }
+    tock_time = micros();
+    delayMicroseconds(desired_control_time - (tock_time - tick_time));
   }
 }
 
@@ -102,7 +109,10 @@ void ir_isr()
   state_prev.b = state_cur.b;
   state_cur.a = digitalRead(IR_A);
   state_cur.b = digitalRead(IR_B);
-  ticks++;
+  if (desired_ticks < 0.0)
+    ticks--;
+  else
+    ticks++;
 
   if (!state_prev.a && !state_prev.b)
   {
