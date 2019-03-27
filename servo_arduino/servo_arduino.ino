@@ -34,7 +34,7 @@ struct state
 
 void setup()
 {
-  Serial.begin(9600);
+  Serial1.begin(9600);
   pinMode(MOTOR_A, OUTPUT);
   pinMode(MOTOR_B, OUTPUT);
   pinMode(IR_A, INPUT);
@@ -52,9 +52,9 @@ void loop()
     tick_time = micros();
     if (new_input)
     {
-      if (Serial.available())
+      if (Serial1.available())
       {
-        desired_angle = Serial.parseInt();
+        desired_angle = Serial1.parseInt();
         desired_ticks = (int)((double)desired_angle * ticks_per_degree);
         if (desired_ticks < 0)
           desired_ticks *= -1;
