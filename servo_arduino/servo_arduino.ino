@@ -2,7 +2,6 @@
 #define MOTOR_B 11
 #define IR_A 9
 #define IR_B 10
-#define KP 4
 
 /*
  * 4 IR ticks/input_revolution
@@ -12,19 +11,20 @@
  * and 360 degrees/output_rev/(4 ticks/input_rev * 75.81 input_rev/output_rev) = 1.1872 degrees/tick
  */
 const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
-             degrees_per_tick = 360.0 / (4.0 * 75.81);  // 1.1872
-long desired_angle, angle, desired_ticks, ticks, error;
-unsigned long tick_time, tock_time, desired_control_time = 20000;
+             degrees_per_tick = 360.0 / (4.0 * 75.81),  // 1.1872
+             K_p = 0.1;
+long desired_angle, angle, desired_ticks, ticks, error, cur_speed;
+unsigned long tick_time, tock_time, desired_control_time = 100000;
 short new_input = 1;
 
 int set_speed(float s);
 void set_velocity(float v);
 
-enum dir
+volatile enum dir
 {
   CW = -1,
   CCW = 1
-} volatile dir_cur;
+} dir_cur;
 
 struct state
 {
@@ -41,8 +41,8 @@ void setup()
   pinMode(IR_B, INPUT);
   attachInterrupt(digitalPinToInterrupt(IR_A), ir_isr, CHANGE);
   attachInterrupt(digitalPinToInterrupt(IR_B), ir_isr, CHANGE);
-  state_prev.a = digitalRead(IR_A);
-  state_prev.b = digitalRead(IR_B);
+  state_cur.a = digitalRead(IR_A);
+  state_cur.b = digitalRead(IR_B);
 }
 
 void loop()
@@ -53,16 +53,23 @@ void loop()
     if (new_input)
     {
       if (Serial.available())
+      {
         desired_angle = Serial.parseInt();
-      desired_ticks = (int)((double)desired_angle * ticks_per_degree);
-      ticks = 0;
-      new_input = 0;
+        desired_ticks = (int)((double)desired_angle * ticks_per_degree);
+        ticks = 0;
+        if (desired_angle > 0)
+          dir_cur = CCW;
+        else
+          dir_cur = CW;
+        new_input = 0;
+      }
     }
 
     else
     {
       error = desired_ticks - ticks;
-      set_velocity(error*KP*dir_cur);
+      cur_speed = error * K_p * dir_cur;
+      set_velocity(cur_speed);
       if (error < 5)
         new_input = 1;
     }
@@ -117,32 +124,32 @@ void ir_isr()
   if (!state_prev.a && !state_prev.b)
   {
     if (!state_cur.a && state_cur.b)
-      dir_cur = CCW;
-    else
       dir_cur = CW;
+    else
+      dir_cur = CCW;
   }
 
   else if (!state_prev.a && state_prev.b)
   {
     if (state_cur.a && state_cur.b)
-      dir_cur = CCW;
-    else
       dir_cur = CW;
+    else
+      dir_cur = CCW;
   }
 
   else if (state_prev.a && !state_prev.b)
   {
     if (!state_cur.a && !state_cur.b)
-      dir_cur = CCW;
-    else
       dir_cur = CW;
+    else
+      dir_cur = CCW;
   }
 
   else
   {
     if (state_cur.a && !state_cur.b)
-      dir_cur = CCW;
-    else
       dir_cur = CW;
+    else
+      dir_cur = CCW;
   }
 }
