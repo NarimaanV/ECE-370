@@ -1,25 +1,63 @@
 #define MOTOR_A 12
 #define MOTOR_B 11
+#define IR_A 9
+#define IR_B 10
+#define KP 4
+
+/*
+ * 4 IR ticks/input_revolution
+ * 75.81 input_revolution/output_revolution
+ * 360 degrees/output_revolution
+ * Therefore, (4 ticks/input_rev * 75.81 input_rev/output_rev)/360 degrees/output_rev = 0.8423 ticks/degree
+ * and 360 degrees/output_rev/(4 ticks/input_rev * 75.81 input_rev/output_rev) = 1.1872 degrees/tick
+ */
+const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
+             degrees_per_tick = 360.0 / (4.0 * 75.81);  // 1.1872
+long desired_angle, angle, desired_ticks, ticks;
 
 int set_speed(float s);
-
 void set_velocity(float v);
+
+enum dir
+{
+  CW,
+  CCW
+} volatile dir_cur;
+
+struct state
+{
+  short a;
+  short b;
+} state_prev, state_cur;
 
 void setup()
 {
-  
+  Serial.begin(9600);
+  pinMode(MOTOR_A, OUTPUT);
+  pinMode(MOTOR_B, OUTPUT);
+  pinMode(IR_A, INPUT);
+  pinMode(IR_B, INPUT);
+  attachInterrupt(digitalPinToInterrupt(IR_A), ir_isr, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(IR_B), ir_isr, CHANGE);
+  state_prev.a = digitalRead(IR_A);
+  state_prev.b = digitalRead(IR_B);
 }
 
 void loop()
 {
-  
+  while(1)
+  {
+    if (Serial.available())
+      desired_angle = Serial.parseInt();
+    desired_ticks = (int)((double)desired_angle * ticks_per_degree);
+  }
 }
 
-// Maps s to corresponding int value on 0-255 scale (clamps values bigger/smaller than 1.0/0.0 to 1.0/0.0, respectively).
+// Maps s to corresponding int value on 0-255 scale (clamps values bigger/smaller than 1.0/0.5 to 1.0/0.5, respectively).
 int set_speed(float s)
 {
-  if (s < 0.0f)
-    s = 0.0f;
+  if (s < 0.5f)
+    s = 0.5f;
   else if (s > 1.0f)
     s = 1.0f;
   return (int)(s * 255.0f);
@@ -44,5 +82,45 @@ void set_velocity(float v)
   {
     analogWrite(MOTOR_A, 0);
     analogWrite(MOTOR_B, 0);
+  }
+}
+
+void ir_isr()
+{
+  state_prev.a = state_cur.a;
+  state_prev.b = state_cur.b;
+  state_cur.a = digitalRead(IR_A);
+  state_cur.b = digitalRead(IR_B);
+
+  if (!state_prev.a && !state_prev.b)
+  {
+    if (!state_cur.a && state_cur.b)
+      dir_cur = CCW;
+    else
+      dir_cur = CW;
+  }
+
+  else if (!state_prev.a && state_prev.b)
+  {
+    if (state_cur.a && state_cur.b)
+      dir_cur = CCW;
+    else
+      dir_cur = CW;
+  }
+
+  else if (state_prev.a && !state_prev.b)
+  {
+    if (!state_cur.a && !state_cur.b)
+      dir_cur = CCW;
+    else
+      dir_cur = CW;
+  }
+
+  else
+  {
+    if (state_cur.a && !state_cur.b)
+      dir_cur = CCW;
+    else
+      dir_cur = CW;
   }
 }
