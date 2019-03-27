@@ -14,7 +14,7 @@ const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
              degrees_per_tick = 360.0 / (4.0 * 75.81),  // 1.1872
              K_p = 0.1;
 long desired_angle, angle, desired_ticks, ticks, error, cur_speed;
-unsigned long tick_time, tock_time, desired_control_time = 100000;
+unsigned long tick_time, tock_time, desired_control_time = 50000;
 short new_input = 1;
 
 int set_speed(float s);
@@ -56,6 +56,8 @@ void loop()
       {
         desired_angle = Serial.parseInt();
         desired_ticks = (int)((double)desired_angle * ticks_per_degree);
+        if (desired_ticks < 0)
+          desired_ticks *= -1;
         ticks = 0;
         if (desired_angle > 0)
           dir_cur = CCW;
@@ -68,9 +70,13 @@ void loop()
     else
     {
       error = desired_ticks - ticks;
+      Serial.print("Error: ");
+      Serial.println(error);
       cur_speed = error * K_p * dir_cur;
+      Serial.print("Speed: ");
+      Serial.println(cur_speed);
       set_velocity(cur_speed);
-      if (error < 5)
+      if (error < 3)
         new_input = 1;
     }
     tock_time = micros();
@@ -116,7 +122,7 @@ void ir_isr()
   state_prev.b = state_cur.b;
   state_cur.a = digitalRead(IR_A);
   state_cur.b = digitalRead(IR_B);
-  if (desired_ticks < 0.0)
+  if (error < 0.0)
     ticks--;
   else
     ticks++;
