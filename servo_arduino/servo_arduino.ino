@@ -14,14 +14,15 @@
 const double ticks_per_degree = (4.0 * 75.81) / 360.0,  // 0.8423
              degrees_per_tick = 360.0 / (4.0 * 75.81);  // 1.1872
 long desired_angle, angle, desired_ticks, ticks;
+short new_input = 1;
 
 int set_speed(float s);
 void set_velocity(float v);
 
 enum dir
 {
-  CW,
-  CCW
+  CW = -1,
+  CCW = 1
 } volatile dir_cur;
 
 struct state
@@ -47,9 +48,19 @@ void loop()
 {
   while(1)
   {
-    if (Serial.available())
-      desired_angle = Serial.parseInt();
-    desired_ticks = (int)((double)desired_angle * ticks_per_degree);
+    if (new_input)
+    {
+      if (Serial.available())
+        desired_angle = Serial.parseInt();
+      desired_ticks = (int)((double)desired_angle * ticks_per_degree);
+      ticks = 0;
+      new_input = 0;
+    }
+
+    else
+    {
+      error = desired_ticks - ticks;
+    }
   }
 }
 
@@ -66,16 +77,16 @@ int set_speed(float s)
 // Outputs PWM on either MOTOR_A or MOTOR_B pins depending on sign
 void set_velocity(float v)
 {
-  if (v > 0.0f)
+  if (v < 0.0f)
   {
-    analogWrite(MOTOR_A, set_speed(v));
+    analogWrite(MOTOR_A, set_speed(-1.0f * v));
     analogWrite(MOTOR_B, 0);
   }
 
-  else if (v < 0.0f)
+  else if (v > 0.0f)
   {
     analogWrite(MOTOR_A, 0);
-    analogWrite(MOTOR_B, set_speed(-1.0f * v));
+    analogWrite(MOTOR_B, set_speed(v));
   }
 
   else
@@ -91,6 +102,7 @@ void ir_isr()
   state_prev.b = state_cur.b;
   state_cur.a = digitalRead(IR_A);
   state_cur.b = digitalRead(IR_B);
+  ticks++;
 
   if (!state_prev.a && !state_prev.b)
   {
