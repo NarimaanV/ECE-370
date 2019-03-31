@@ -54,8 +54,9 @@ e_y = T[1][3]
 theta = theta_0 + theta_1 + theta_2
 theta *= (180.0 / pi)
 
-print("T =")
-print(T)
-print("e_x = " + str(e_x) + " AU")
-print("e_y = " + str(e_y) + " AU")
-print("theta = " + str(theta) + " degrees")
+# Set print options to print nicely and print all information
+np.set_printoptions(precision = 5, floatmode = "fixed")
+print("T = " + str(T).replace('\n', "\n    "))
+print("e_x = %0.5f AU" % e_x)
+print("e_y = %0.5f  AU" % e_y)
+print("theta = %0.2f degrees" % theta)
