@@ -25,7 +25,7 @@ print("\t theta_0 = %0.1f radians" % theta_0)
 print("\t theta_1 = %0.1f radians" % theta_1)
 print("\t theta_2 = %0.1f radians\n" % theta_2)
 
-#____________________The long way________________________________
+#____________________The Long Hand Method____________________________
 # First point
 e_x0 = l_0 * cos(theta_0)
 e_y0 = l_0 * sin(theta_0)
@@ -46,14 +46,14 @@ theta_z = theta_0 + theta_1 + theta_2
 theta_z *= (180.0 / pi)
 
 # Print final values
-print("The Long Way:")
+print("The Long Hand Method:")
 print("\te_x = %0.5f AU" % e_x2)
 print("\te_y = %0.5f AU" % e_y2)
 print("\te_z = %0.5f AU" % e_z2)
 print("\ttheta_x = theta_y = 0 because only moving in XY plane")
 print("\ttheta_z = %0.2f degrees\n" % theta_z)
 
-#__________________The Matrix Way________________________________
+#__________________The Matrix Method_________________________________
 
 # T_0 transformation matrix
 T_0 = np.array([[1, 0, 0, p_x], [0, 1, 0, p_y], [0, 0, 1, p_z], [0, 0, 0, 1]])
@@ -95,7 +95,7 @@ theta_z = theta_0 + theta_1 + theta_2
 theta_z *= (180.0 / pi)
 
 # Set print options to print nicely and print all information
-print("The Matrix Way:")
+print("The Matrix Method:")
 np.set_printoptions(precision = 5, floatmode = "fixed")
 print("\tT = " + str(T).replace('\n', "\n\t    "))
 print("\te_x = %0.5f AU" % e_x)
