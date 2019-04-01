@@ -16,6 +16,15 @@ theta_0 = 0.4
 theta_1 = 0.6
 theta_2 = 1.2
 
+# Print given values
+print("Given Values:")
+print("\t l_0 = %0.1f AU" % l_0)
+print("\t l_1 = %0.1f AU" % l_1)
+print("\t l_2 = %0.1f AU" % l_2)
+print("\t theta_0 = %0.1f radians" % theta_0)
+print("\t theta_1 = %0.1f radians" % theta_1)
+print("\t theta_2 = %0.1f radians\n" % theta_2)
+
 #____________________The long way________________________________
 # First point
 e_x0 = l_0 * cos(theta_0)
@@ -33,15 +42,16 @@ e_y2 = e_y1 + l_2 * sin(theta_0 + theta_1 + theta_2)
 e_z2 = 0
 
 # Total angle
-theta = theta_0 + theta_1 + theta_2
-theta *= (180.0 / pi)
+theta_z = theta_0 + theta_1 + theta_2
+theta_z *= (180.0 / pi)
 
+# Print final values
 print("The Long Way:")
 print("\te_x = %0.5f AU" % e_x2)
 print("\te_y = %0.5f AU" % e_y2)
 print("\te_z = %0.5f AU" % e_z2)
-print("\ttheta = %0.2f degrees" % theta)
-print("")
+print("\ttheta_x = theta_y = 0 because only moving in XY plane")
+print("\ttheta_z = %0.2f degrees\n" % theta_z)
 
 #__________________The Matrix Way________________________________
 
@@ -81,8 +91,8 @@ e_y = T[1][3]
 e_z = T[2][3]
 
 # Calculating final theta trajectory (in degrees)
-theta = theta_0 + theta_1 + theta_2
-theta *= (180.0 / pi)
+theta_z = theta_0 + theta_1 + theta_2
+theta_z *= (180.0 / pi)
 
 # Set print options to print nicely and print all information
 print("The Matrix Way:")
@@ -91,4 +101,5 @@ print("\tT = " + str(T).replace('\n', "\n\t    "))
 print("\te_x = %0.5f AU" % e_x)
 print("\te_y = %0.5f AU" % e_y)
 print("\te_z = %0.5f AU" % e_z)
-print("\ttheta = %0.2f degrees" % theta)
+print("\ttheta_x = theta_y = 0 because only moving in XY plane")
+print("\ttheta_z = %0.2f degrees" % theta_z)
