@@ -1,3 +1,5 @@
+#include <BasicLinearAlgebra.h>
+
 // Constant values for pin numbers and robot dimensions
 #define RADIUS      30  // Wheel radii in mm
 #define BASELINE    80  // Transaxial distance between center of each wheels
@@ -9,6 +11,11 @@
 // Preprocessor flag for switching between analytical and matrix methods of odometry
 #define MATRIX_METHOD
 
+// Since only one library for matrices is being used, this eliminates needing to preface all matrix-related operations with "BLA::"
+using namespace BLA;
+
+Matrix<4, 4, Array<4, 4, double>> T_right, T_right_prev, T_left, T_left_prev;
+
 void setup()
 {
   // Set pin directions for motors and IR sensors
@@ -19,12 +26,12 @@ void setup()
 
   // Choose ISRs for certain method dependong in preprocessor flag
   #ifdef MATRIX_METHOD
-    attachInterrupt(digitalPinToInterrupt(IR_RIGHT), matrix_odometry_right, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(IR_LEFT), matrix_odometry_left, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(IR_RIGHT), matrix_odometry_right, RISING);
+    attachInterrupt(digitalPinToInterrupt(IR_LEFT), matrix_odometry_left, RISING);
   #else
-    attachInterrupt(digitalPinToInterrupt(IR_RIGHT), analytical_odometry_right, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, CHANGE);
-  #endif
+    attachInterrupt(digitalPinToInterrupt(IR_RIGHT), analytical_odometry_right, RISING);
+    attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
+  #endif  // MATRIX_METHOD
 }
 
 void loop()
