@@ -1,14 +1,14 @@
 #include <BasicLinearAlgebra.h>
 
 // Constant values for pin numbers and robot dimensions
-#define RADIUS          30    // Wheel radii in mm
-#define BASELINE        80    // Transaxial distance between center of each wheels
+#define RADIUS          30.0  // Wheel radii in mm
+#define BASELINE        80.0  // Transaxial distance between center of each wheels
 #define MOTOR_RIGHT     12    // Right motor pin
 #define MOTOR_LEFT      11    // Left motor pin
 #define IR_RIGHT        6     // Right wheel IR sensor pin
 #define IR_LEFT         5     // Left wheel IR sensor pin
 #define GEAR_RATIO      75.81 // Gear ratio of motor gearbox (input/output)
-#define TICKS_PER_ROT   2     // How many ticks will register per rotation of encoder wheel
+#define TICKS_PER_ROT   2     // How many ticks will register per rotation of encoder wheel (depends on both encoder design AND what edge(s) trigger interrupts)
 
 // Preprocessor flag for switching between analytical and matrix methods of odometry
 #define MATRIX_METHOD
@@ -16,8 +16,26 @@
 // Since only one library for matrices is being used, this eliminates needing to preface all matrix-related operations with "BLA::"
 using namespace BLA;
 
-// Transformation matrices for right and left weheel
-Matrix<4, 4, Array<4, 4, double>> T_right, T_left;
+// Transformation matrices 
+Matrix<4, 4, Array<4, 4, double>> T_right = {1.0, 0.0, 0.0, 0.0, // Right wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                             0.0, 1.0, 0.0, 0.0,
+                                             0.0, 0.0, 1.0, 0.0,
+                                             0.0, 0.0, 0.0, 1.0},
+                                             
+                                  T_left = {1.0, 0.0, 0.0, 0.0,  // Left wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                            0.0, 1.0, 0.0, 0.0,
+                                            0.0, 0.0, 1.0, 0.0,
+                                            0.0, 0.0, 0.0, 1.0},
+                                            
+                                  translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
+                                                     0.0, 1.0, 0.0, -L,
+                                                     0.0, 0.0, 1.0, 0.0,
+                                                     0.0, 0.0, 0.0, 1.0};
+
+                                  translate_left = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
+                                                    0.0, 1.0, 0.0, L,
+                                                    0.0, 0.0, 1.0, 0.0,
+                                                    0.0, 0.0, 0.0, 1.0};
 
 // Current global-referenced values for x, y, and phi (all start at 0.0);
 double x_global = 0.0,
