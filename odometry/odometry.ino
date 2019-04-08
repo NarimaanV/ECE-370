@@ -3,14 +3,14 @@
 // Constant values for pin numbers and robot dimensions
 #define RADIUS          30.0  // Wheel radii in mm
 #define BASELINE        80.0  // Transaxial distance between center of each wheels
+#define GEAR_RATIO      75.81 // Gear ratio of motor gearbox (input/output)
+#define TICKS_PER_ROT   2     // How many ticks will register per rotation of encoder wheel (depends on both encoder design AND what edge(s) trigger interrupts)
 #define MOTOR_RIGHT     12    // Right motor pin
 #define MOTOR_LEFT      11    // Left motor pin
 #define IR_RIGHT        6     // Right wheel IR sensor pin
 #define IR_LEFT         5     // Left wheel IR sensor pin
-#define GEAR_RATIO      75.81 // Gear ratio of motor gearbox (input/output)
-#define TICKS_PER_ROT   2     // How many ticks will register per rotation of encoder wheel (depends on both encoder design AND what edge(s) trigger interrupts)
 
-// Preprocessor flag for switching between analytical and matrix methods of odometry
+// Preprocessor flag for switching between analytical and matrix methods of odometry (comment out for analytical method)
 #define MATRIX_METHOD
 
 // Since only one library for matrices is being used, this eliminates needing to preface all matrix-related operations with "BLA::"
@@ -75,7 +75,7 @@ void setup()
 
 void loop()
 {
-  // Do robot stuff
+  // Do robot stuff, I bet it'll look cool
 }
 
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
