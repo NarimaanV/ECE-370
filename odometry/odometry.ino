@@ -16,27 +16,6 @@
 // Since only one library for matrices is being used, this eliminates needing to preface all matrix-related operations with "BLA::"
 using namespace BLA;
 
-// Transformation matrices 
-Matrix<4, 4, Array<4, 4, double>> T_right = {1.0, 0.0, 0.0, 0.0, // Right wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
-                                             0.0, 1.0, 0.0, 0.0,
-                                             0.0, 0.0, 1.0, 0.0,
-                                             0.0, 0.0, 0.0, 1.0},
-                                             
-                                  T_left = {1.0, 0.0, 0.0, 0.0,  // Left wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
-                                            0.0, 1.0, 0.0, 0.0,
-                                            0.0, 0.0, 1.0, 0.0,
-                                            0.0, 0.0, 0.0, 1.0},
-                                            
-                                  translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
-                                                     0.0, 1.0, 0.0, -L,
-                                                     0.0, 0.0, 1.0, 0.0,
-                                                     0.0, 0.0, 0.0, 1.0};
-
-                                  translate_left = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
-                                                    0.0, 1.0, 0.0, L,
-                                                    0.0, 0.0, 1.0, 0.0,
-                                                    0.0, 0.0, 0.0, 1.0};
-
 // Current global-referenced values for x, y, and phi (all start at 0.0);
 double x_global = 0.0,
        y_global = 0.0,
@@ -49,6 +28,37 @@ double x_global = 0.0,
 // 1/TICKS_PER_ROT encoder rotation/tick
 // So phi radians / tick = ((RADIUS/BASELINE) phi radians/wheel radians)*(2pi wheel radians/wheel rotation)*(1/GEAR_RATIO wheel rotations/encoder rotation)*(1/TICKS_PER_ROT encoder rotation/tick)
 const double phi_radians_per_tick = (RADIUS / BASELINE) * (2.0 * PI) * (1.0 / 75.81) * (1.0 / TICKS_PER_ROT);
+
+// Transformation matrices 
+Matrix<4, 4, Array<4, 4, double>> T_right = {1.0, 0.0, 0.0, 0.0, // Right wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                             0.0, 1.0, 0.0, 0.0,
+                                             0.0, 0.0, 1.0, 0.0,
+                                             0.0, 0.0, 0.0, 1.0},
+                                             
+                                  T_left = {1.0, 0.0, 0.0, 0.0,  // Left wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                            0.0, 1.0, 0.0, 0.0,
+                                            0.0, 0.0, 1.0, 0.0,
+                                            0.0, 0.0, 0.0, 1.0},
+                                            
+                                  translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
+                                                     0.0, 1.0, 0.0, -BASELINE,
+                                                     0.0, 0.0, 1.0, 0.0,
+                                                     0.0, 0.0, 0.0, 1.0},
+
+                                  translate_left = {1.0, 0.0, 0.0, 0.0, // Left wheel translational transformation matrix (never changes)
+                                                    0.0, 1.0, 0.0, BASELINE,
+                                                    0.0, 0.0, 1.0, 0.0,
+                                                    0.0, 0.0, 0.0, 1.0},
+
+                                  rotate_right = {cos(phi_radians_per_tick), -sin(phi_radians_per_tick), 0.0, 0.0,  // Right wheel rotational transformation matrix (never changes)
+                                                  sin(phi_radians_per_tick), cos(phi_radians_per_tick),  0.0, BASELINE / 2.0,
+                                                  0.0,                       0.0,                        1.0, 0.0,
+                                                  0.0,                       0.0,                        0.0, 1.0},
+                                                    
+                                  rotate_left = {cos(-phi_radians_per_tick), -sin(-phi_radians_per_tick), 0.0, 0.0,   // Left wheel rotational transformation matrix (never changes)
+                                                 sin(-phi_radians_per_tick), cos(-phi_radians_per_tick),  0.0, -BASELINE / 2.0,
+                                                 0.0,                        0.0,                        1.0, 0.0,
+                                                 0.0,                        0.0,                        0.0, 1.0};
 
 void setup()
 {
