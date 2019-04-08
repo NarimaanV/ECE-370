@@ -30,15 +30,10 @@ double x_global = 0.0,
 const double phi_radians_per_tick = (RADIUS / BASELINE) * (2.0 * PI) * (1.0 / 75.81) * (1.0 / TICKS_PER_ROT);
 
 // Transformation matrices 
-Matrix<4, 4, Array<4, 4, double>> T_right = {1.0, 0.0, 0.0, 0.0, // Right wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
-                                             0.0, 1.0, 0.0, 0.0,
-                                             0.0, 0.0, 1.0, 0.0,
-                                             0.0, 0.0, 0.0, 1.0},
-                                             
-                                  T_left = {1.0, 0.0, 0.0, 0.0,  // Left wheel current transformation matrix (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
-                                            0.0, 1.0, 0.0, 0.0,
-                                            0.0, 0.0, 1.0, 0.0,
-                                            0.0, 0.0, 0.0, 1.0},
+Matrix<4, 4, Array<4, 4, double>> T = {1.0, 0.0, 0.0, 0.0, // Current transformation matrix between global origin and robot center (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                       0.0, 1.0, 0.0, 0.0,
+                                       0.0, 0.0, 1.0, 0.0,
+                                       0.0, 0.0, 0.0, 1.0},
                                             
                                   translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
                                                      0.0, 1.0, 0.0, -BASELINE,
@@ -114,11 +109,17 @@ void analytical_odometry_left()
 // ISR for calculating odometry of right wheel based on IR sensor signal using matrix method
 void matrix_odometry_right()
 {
-  
+  T = T * translate_right * rotate_right; // Multiply transformation matrices to update current global x and y positions
+  x_global = T(0, 3); // Assign global x based on value in new transformation matrix
+  y_global = T(1, 3); // Assign global y based on value in new transformation matrix
+  phi_global += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
 }
 
 // ISR for calculating odometry of left wheel based on IR sensor signal using matrix method
 void matrix_odometry_left()
 {
-  
+  T = T * translate_left * rotate_left; // Multiply transformation matrices to update current global x and y positions
+  x_global = T(0, 3); // Assign global x based on value in new transformation matrix
+  y_global = T(1, 3); // Assign global y based on value in new transformation matrix
+  phi_global -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
 }
