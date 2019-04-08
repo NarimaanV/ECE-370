@@ -19,7 +19,7 @@ using namespace BLA;
 // Transformation matrices for right and left weheel
 Matrix<4, 4, Array<4, 4, double>> T_right, T_left;
 
-// Current global-referenced values for x, y, and phi (all start at 0);
+// Current global-referenced values for x, y, and phi (all start at 0.0);
 double x_global = 0.0,
        y_global = 0.0,
        phi_global = 0.0;
@@ -58,13 +58,29 @@ void loop()
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
 void analytical_odometry_right()
 {
-   
+  double delta_x, delta_y;  // Local delta x and delta y values
+  
+  phi_global += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  
+  delta_x = (BASELINE / 2.0) * sin(phi_radians_per_tick); // Calculate local delta x based on local phi
+  delta_y = (BASELINE / 2.0) - ((BASELINE / 2.0) * cos(phi_radians_per_tick)); // Calculate local delta y based on local phi
+  
+  x_global += (delta_x * cos(phi_global)) + (delta_y * sin(phi_global));  // Update global x based on global phi and local delta x and y
+  y_global += (delta_x * sin(phi_global)) + (delta_y * cos(phi_global));  // Update global y based on global phi and local delta x and y
 }
 
 // ISR for calculating odometry of left wheel based on IR sensor signal using analytical method
 void analytical_odometry_left()
 {
+  double delta_x, delta_y;  // Local delta x and delta y values
   
+  phi_global -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  
+  delta_x = (BASELINE / 2.0) * sin(phi_radians_per_tick); // Calculate local delta x based on local phi
+  delta_y = (BASELINE / 2.0) - ((BASELINE / 2.0) * cos(phi_radians_per_tick)); // Calculate local delta y based on local phi
+  
+  x_global += (delta_x * cos(phi_global)) + (delta_y * sin(phi_global));  // Update global x based on global phi and local delta x and y
+  y_global -= (delta_x * sin(phi_global)) + (delta_y * cos(phi_global));  // Update global y based on global phi and local delta x and y
 }
 
 // ISR for calculating odometry of right wheel based on IR sensor signal using matrix method
