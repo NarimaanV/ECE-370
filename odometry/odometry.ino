@@ -57,6 +57,7 @@ Matrix<4, 4, Array<4, 4, double>> T = {1.0, 0.0, 0.0, 0.0, // Current transforma
 
 void setup()
 {
+  Serial.begin(9600);
   // Set pin directions for motors and IR sensors
   pinMode(MOTOR_RIGHT, OUTPUT);
   pinMode(MOTOR_LEFT, OUTPUT);
@@ -71,6 +72,26 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(IR_RIGHT), analytical_odometry_right, RISING);
     attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
   #endif  // MATRIX_METHOD
+
+  delay(5000);
+  char out[50];
+  
+  Serial.print("Initial: X = ");
+  Serial.print(x_global);
+  Serial.print(", Y = ");
+  Serial.print(y_global);
+  Serial.print(", Phi = ");
+  Serial.println(phi_global);
+  for (int i = 0; i < 160; i++)
+  {
+    analytical_odometry_right();
+  }
+  Serial.print("Final: X = ");
+  Serial.print(x_global);
+  Serial.print(", Y = ");
+  Serial.print(y_global);
+  Serial.print(", Phi = ");
+  Serial.println(phi_global);
 }
 
 void loop()
