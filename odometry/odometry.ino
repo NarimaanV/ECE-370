@@ -1,9 +1,9 @@
 #include <BasicLinearAlgebra.h>
 
 // Constant values for pin numbers and robot dimensions
-#define RADIUS          30.0  // Wheel radii in mm
-#define BASELINE        80.0  // Transaxial distance between center of each wheels
-#define GEAR_RATIO      75.81 // Gear ratio of motor gearbox (input/output)
+#define RADIUS          31.4  // Wheel radii in mm
+#define BASELINE        82.4  // Transaxial distance between center of each wheels
+#define GEAR_RATIO      80 // Gear ratio of motor gearbox (input/output) 75.81
 #define TICKS_PER_ROT   2     // How many ticks will register per rotation of encoder wheel (depends on both encoder design AND what edge(s) trigger interrupts)
 #define MOTOR_RIGHT     12    // Right motor pin
 #define MOTOR_LEFT      11    // Left motor pin
@@ -17,7 +17,7 @@
 using namespace BLA;
 
 // Current global-referenced values for x, y, and phi (all start at 0.0);
-double x_global = 0.0,
+float x_global = 0.0,
        y_global = 0.0,
        phi_global = 0.0;
 
@@ -27,13 +27,13 @@ double x_global = 0.0,
 // 1/GEAR_RATIO wheel rotations/encoder rotation
 // 1/TICKS_PER_ROT encoder rotation/tick
 // So phi radians / tick = ((RADIUS/BASELINE) phi radians/wheel radians)*(2pi wheel radians/wheel rotation)*(1/GEAR_RATIO wheel rotations/encoder rotation)*(1/TICKS_PER_ROT encoder rotation/tick)
-const double phi_radians_per_tick = (RADIUS / BASELINE) * (2.0 * PI) * (1.0 / 75.81) * (1.0 / TICKS_PER_ROT);
+const float phi_radians_per_tick = (RADIUS / BASELINE) * (2.0 * PI) * (1.0 / 75.81) * (1.0 / TICKS_PER_ROT);
 
 // Transformation matrices 
-Matrix<4, 4, Array<4, 4, double>> T = {1.0, 0.0, 0.0, 0.0, // Current transformation matrix between global origin and robot center (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
-                                       0.0, 1.0, 0.0, 0.0,
-                                       0.0, 0.0, 1.0, 0.0,
-                                       0.0, 0.0, 0.0, 1.0},
+Matrix<4, 4, Array<4, 4, float>> T = {1.0, 0.0, 0.0, 0.0, // Current transformation matrix between global origin and robot center (identity matrix since initial position is assumed to be x, y, phi = 0.0, 0.0, 0.0)
+                                      0.0, 1.0, 0.0, 0.0,
+                                      0.0, 0.0, 1.0, 0.0,
+                                      0.0, 0.0, 0.0, 1.0},
                                             
                                   translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
                                                      0.0, 1.0, 0.0, -BASELINE,
@@ -85,6 +85,7 @@ void setup()
   for (int i = 0; i < 160; i++)
   {
     analytical_odometry_right();
+    analytical_odometry_left();
   }
   Serial.print("Final: X = ");
   Serial.print(x_global);
@@ -102,7 +103,7 @@ void loop()
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
 void analytical_odometry_right()
 {
-  double delta_x, delta_y;  // Local delta x and delta y values
+  float delta_x, delta_y;  // Local delta x and delta y values
   
   phi_global += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
   
@@ -116,7 +117,7 @@ void analytical_odometry_right()
 // ISR for calculating odometry of left wheel based on IR sensor signal using analytical method
 void analytical_odometry_left()
 {
-  double delta_x, delta_y;  // Local delta x and delta y values
+  float delta_x, delta_y;  // Local delta x and delta y values
   
   phi_global -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
   
@@ -130,7 +131,7 @@ void analytical_odometry_left()
 // ISR for calculating odometry of right wheel based on IR sensor signal using matrix method
 void matrix_odometry_right()
 {
-  T = T * translate_right * rotate_right; // Multiply transformation matrices to update current global x and y positions
+  T = T * rotate_right * translate_right; // Multiply transformation matrices to update current global x and y positions
   x_global = T(0, 3); // Assign global x based on value in new transformation matrix
   y_global = T(1, 3); // Assign global y based on value in new transformation matrix
   phi_global += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
@@ -139,7 +140,7 @@ void matrix_odometry_right()
 // ISR for calculating odometry of left wheel based on IR sensor signal using matrix method
 void matrix_odometry_left()
 {
-  T = T * translate_left * rotate_left; // Multiply transformation matrices to update current global x and y positions
+  T = T * rotate_left * translate_left; // Multiply transformation matrices to update current global x and y positions
   x_global = T(0, 3); // Assign global x based on value in new transformation matrix
   y_global = T(1, 3); // Assign global y based on value in new transformation matrix
   phi_global -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
