@@ -13,6 +13,13 @@ struct __attribute__((__packed__)) command
   int mode;
 } *input_command;
 
+struct __attribute__((__packed__)) robot_info
+{
+  float x;
+  float y;
+  float phi;
+} cur_info;
+
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
@@ -20,7 +27,8 @@ int status = WL_IDLE_STATUS;     // the WiFi radio's status
 unsigned int localPort = 2390;      // local port to listen on
 
 char packetBuffer[sizeof(command)]; //buffer to hold incoming packet
-char replyBuffer[20] = "Received";       // a string to send back
+//char replyBuffer[] = "Hello";       // a string to send back
+char* replyBuffer;
 
 WiFiUDP Udp;
 
@@ -41,7 +49,7 @@ void setup()
     status = WiFi.begin(ssid, pass); 
 
     // wait 10 seconds for connection:
-    delay(10000);
+    delay(5000);
   }
 
   Serial.print("You're connected to the network");
@@ -64,13 +72,13 @@ void loop()
     Serial.println(input_command->translational);
     Serial.println(input_command->rotational);
     Serial.println(input_command->mode);
+    
+    cur_info.x = 1.1;
+    cur_info.y = 2.2;
+    cur_info.phi = 3.3;
 
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write(replyBuffer);
-    Udp.endPacket();
-
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write(replyBuffer, 20);
+    Udp.write((char*)(&cur_info));
     Udp.endPacket();
   }
 }

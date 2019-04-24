@@ -28,13 +28,19 @@ struct __attribute__((__packed__)) command
   int mode;
 } input_command;
 
+struct __attribute__((__packed__)) robot_info
+{
+  float x;
+  float y;
+  float phi;
+} cur_info;
+
 int main(int argc, char **argv) {
     int sockfd, portno, n;
     int serverlen;
     struct sockaddr_in serveraddr;
     struct hostent *server;
     char *hostname;
-    char buf[BUFSIZE];
 
     /* check command line arguments */
     if (argc != 3) {
@@ -80,9 +86,9 @@ int main(int argc, char **argv) {
       error("ERROR in sendto");
     
     /* print the server's reply */
-    n = recvfrom(sockfd, buf, 20, 0, &serveraddr, &serverlen);
+    n = recvfrom(sockfd, (char*)(&cur_info), sizeof(struct robot_info), 0, &serveraddr, &serverlen);
     if (n < 0) 
       error("ERROR in recvfrom");
-    printf("Echo from server: %s\n", buf);
+    printf("Echo from server: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
     return 0;
 }
