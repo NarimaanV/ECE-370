@@ -11,7 +11,7 @@ struct __attribute__((__packed__)) command
   float translational;
   float rotational;
   int mode;
-} *input_command;
+} input_command;
 
 struct __attribute__((__packed__)) robot_info
 {
@@ -25,10 +25,6 @@ char pass[] = SECRET_PASS;
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
 unsigned int localPort = 2390;      // local port to listen on
-
-char packetBuffer[sizeof(command)]; //buffer to hold incoming packet
-//char replyBuffer[] = "Hello";       // a string to send back
-char* replyBuffer;
 
 WiFiUDP Udp;
 
@@ -67,11 +63,10 @@ void loop()
 
   if (packetSize)
   {
-    Udp.read(packetBuffer, sizeof(command));
-    input_command = (command*)packetBuffer;
-    Serial.println(input_command->translational);
-    Serial.println(input_command->rotational);
-    Serial.println(input_command->mode);
+    Udp.read((char*)(&input_command), sizeof(command));
+    Serial.println(input_command.translational);
+    Serial.println(input_command.rotational);
+    Serial.println(input_command.mode);
     
     cur_info.x = 1.1;
     cur_info.y = 2.2;
