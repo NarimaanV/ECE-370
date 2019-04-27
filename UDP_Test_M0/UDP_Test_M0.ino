@@ -24,7 +24,7 @@ char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
-unsigned int localPort = 2390;      // local port to listen on
+unsigned int localPort = 5005;      // local port to listen on
 
 WiFiUDP Udp;
 
@@ -64,8 +64,8 @@ void loop()
   if (packetSize)
   {
     Udp.read((char*)(&input_command), sizeof(command));
-    Serial.println(input_command.translational);
-    Serial.println(input_command.rotational);
+    Serial.println(input_command.translational, 5);
+    Serial.println(input_command.rotational, 5);
     Serial.println(input_command.mode);
     
     cur_info.x = 1.1;
