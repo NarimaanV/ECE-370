@@ -6,7 +6,7 @@ CC := gcc
 BINARIES := udp-sender 
 all : $(BINARIES)
 
-LIBS := -lrt #-lach 
+LIBS := -lrt -lncurses #-lach 
 
 udp-sender: src/udp-sender.o
 	gcc -o $@ $< $(LIBS)

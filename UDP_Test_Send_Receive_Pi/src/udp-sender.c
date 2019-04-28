@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h> 
+#include <ncurses.h>
 
 #define BUFSIZE 1024
 
@@ -26,21 +27,29 @@ struct __attribute__((__packed__)) command
   float translational;
   float rotational;
   int mode;
-} input_command;
+};
 
 struct __attribute__((__packed__)) robot_info
 {
   float x;
   float y;
   float phi;
-} cur_info;
+};
 
-int main(int argc, char **argv) {
+
+void send_command(struct command c, int sockfd, struct sockaddr_in serveraddr);
+struct robot_info receive_info(int sockfd, struct sockaddr_in serveraddr);
+
+int main(int argc, char **argv)
+{
     int sockfd, portno, n;
     int serverlen;
     struct sockaddr_in serveraddr;
     struct hostent *server;
     char *hostname;
+    int key;
+    struct command input_command = {0.0f, 0.0f, 0};
+    struct robot_info cur_info;
 
     /* check command line arguments */
     if (argc != 3) {
@@ -69,26 +78,60 @@ int main(int argc, char **argv) {
 	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
     serveraddr.sin_port = htons(portno);
 
-    /* get a message from the user */
-    //bzero(buf, BUFSIZE);
-    //printf("Please enter msg: ");
-    //fgets(buf, BUFSIZE, stdin);
+    //scanf("%f %f %d", &(input_command.translational), &(input_command.rotational), &(input_command.mode));
 
-    memset(&input_command, 0, sizeof(input_command));
-    scanf("%f %f %d", &(input_command.translational), &(input_command.rotational), &(input_command.mode));
+	initscr();
+	keypad(stdscr, TRUE);
+	noecho();
+	timeout(-1);
+	
+	while (1)
+	{
+		key = getch();
+		switch (key)
+		{
+		case KEY_UP:
+			input_command.translational += 10.0f;
+			break;
+		case KEY_DOWN:
+			input_command.translational -= 10.0f;
+			break;
+		case KEY_LEFT:
+			input_command.rotational += 90.0f;
+			break;
+		case KEY_RIGHT:
+			input_command.rotational -= 90.0f;
+			break;
+		case 113:
+			printw("Echo from server: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
+			break;
+		default:
+			break;
+		}
+		
+		send_command(input_command, sockfd, serveraddr);
+		cur_info = receive_info(sockfd, serveraddr); 
+	}
 
-
-    /* send the message to the server */
-    serverlen = sizeof(serveraddr);
-    n = sendto(sockfd, &input_command, sizeof(input_command), 0, &serveraddr, serverlen);
-    //n = sendto(sockfd, buf, strlen(buf), 0, &serveraddr, serverlen);
-    if (n < 0) 
-      error("ERROR in sendto");
-    
-    /* print the server's reply */
-    n = recvfrom(sockfd, (char*)(&cur_info), sizeof(struct robot_info), 0, &serveraddr, &serverlen);
-    if (n < 0) 
-      error("ERROR in recvfrom");
-    printf("Echo from server: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
     return 0;
+}
+
+void send_command(struct command c, int sockfd, struct sockaddr_in serveraddr)
+{
+	int serverlen = sizeof(serveraddr);
+	/* send the message to the server */
+	if (sendto(sockfd, &c, sizeof(c), 0, &serveraddr, serverlen) < 0)
+		error("ERROR in sendto");
+}
+
+struct robot_info receive_info(int sockfd, struct sockaddr_in serveraddr)
+{
+	struct robot_info current;
+	int serverlen = sizeof(serveraddr);
+	
+	/* print the server's reply */
+	if (recvfrom(sockfd, (char*)(&current), sizeof(current), 0, &serveraddr, &serverlen) < 0)
+		error("ERROR in recvfrom");
+
+	return current;
 }
