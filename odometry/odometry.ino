@@ -18,8 +18,8 @@ using namespace BLA;
 
 // Current global-referenced values for x, y, and phi (all start at 0.0);
 float x_global = 0.0f,
-       y_global = 0.0f,
-       phi_global = 0.0f;
+      y_global = 0.0f,
+      phi_global = 0.0f;
 
 // Phi angle radians per single tick
 // (RADIUS/BASELINE) phi radians/wheel radians 
@@ -35,25 +35,25 @@ Matrix<4, 4> T = {1.0, 0.0, 0.0, 0.0, // Current transformation matrix between g
                   0.0, 0.0, 1.0, 0.0,
                   0.0, 0.0, 0.0, 1.0},
                                             
-                                  translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
-                                                     0.0, 1.0, 0.0, -BASELINE,
-                                                     0.0, 0.0, 1.0, 0.0,
-                                                     0.0, 0.0, 0.0, 1.0},
+             translate_right = {1.0, 0.0, 0.0, 0.0, // Right wheel translational transformation matrix (never changes)
+                                0.0, 1.0, 0.0, -BASELINE,
+                                0.0, 0.0, 1.0, 0.0,
+                                0.0, 0.0, 0.0, 1.0},
 
-                                  translate_left = {1.0, 0.0, 0.0, 0.0, // Left wheel translational transformation matrix (never changes)
-                                                    0.0, 1.0, 0.0, BASELINE,
-                                                    0.0, 0.0, 1.0, 0.0,
-                                                    0.0, 0.0, 0.0, 1.0},
+             translate_left = {1.0, 0.0, 0.0, 0.0, // Left wheel translational transformation matrix (never changes)
+                               0.0, 1.0, 0.0, BASELINE,
+                               0.0, 0.0, 1.0, 0.0,
+                               0.0, 0.0, 0.0, 1.0},
 
-                                  rotate_right = {cos(phi_radians_per_tick), -sin(phi_radians_per_tick), 0.0, 0.0,  // Right wheel rotational transformation matrix (never changes)
-                                                  sin(phi_radians_per_tick), cos(phi_radians_per_tick),  0.0, 0.0,
-                                                  0.0,                       0.0,                        1.0, 0.0,
-                                                  0.0,                       0.0,                        0.0, 1.0},
-                                                    
-                                  rotate_left = {cos(-phi_radians_per_tick), -sin(-phi_radians_per_tick), 0.0, 0.0,   // Left wheel rotational transformation matrix (never changes)
-                                                 sin(-phi_radians_per_tick), cos(-phi_radians_per_tick),  0.0, 0.0,
-                                                 0.0,                        0.0,                        1.0, 0.0,
-                                                 0.0,                        0.0,                        0.0, 1.0};
+             rotate_right = {cos(phi_radians_per_tick), sin(phi_radians_per_tick), 0.0, 0.0,  // Right wheel rotational transformation matrix (never changes)
+                             -sin(phi_radians_per_tick), cos(phi_radians_per_tick),  0.0, 0.0f,
+                             0.0,                       0.0,                        1.0, 0.0,
+                             0.0,                       0.0,                        0.0, 1.0},
+                                                   
+             rotate_left = {cos(-phi_radians_per_tick), sin(-phi_radians_per_tick), 0.0, 0.0,   // Left wheel rotational transformation matrix (never changes)
+                            -sin(-phi_radians_per_tick), cos(-phi_radians_per_tick),  0.0, 0.0f,
+                            0.0,                        0.0,                        1.0, 0.0,
+                            0.0,                        0.0,                        0.0, 1.0};
 
 void setup()
 {
@@ -73,38 +73,50 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
   #endif  // MATRIX_METHOD
 
-//  delay(5000);
-//  char out[50];
-//  
-//  Serial.print("\nMatrix Initial: X = ");
-//  Serial.print(x_global, 5);
-//  Serial.print(", Y = ");
-//  Serial.print(y_global, 5);
-//  Serial.print(", Phi = ");
-//  Serial.println(phi_global, 5);
-//  for (int i = 0; i < 80; i++)
-//  {
-//    matrix_odometry_right();
-////    matrix_odometry_left();
-//  }
-//  Serial.print("Matrix Final: X = ");
-//  Serial.print(x_global, 5);
-//  Serial.print(", Y = ");
-//  Serial.print(y_global, 5);
-//  Serial.print(", Phi = ");
-//  Serial.println(phi_global, 5);
-}
-
-void loop()
-{
-  Serial.print("Current: X = ");
+  delay(5000);
+  char out[50];
+  
+  Serial.print("Matrix Initial: X = ");
   Serial.print(x_global, 5);
   Serial.print(", Y = ");
   Serial.print(y_global, 5);
   Serial.print(", Phi = ");
   Serial.println(phi_global, 5);
+  for (int i = 0; i < 80; i++)
+  {
+    matrix_odometry_right();
+    Serial.print("After Right: X = ");
+    Serial.print(x_global, 5);
+    Serial.print(", Y = ");
+    Serial.print(y_global, 5);
+    Serial.print(", Phi = ");
+    Serial.println(phi_global, 5);
+    matrix_odometry_left();
+    Serial.print("After Left: X = ");
+    Serial.print(x_global, 5);
+    Serial.print(", Y = ");
+    Serial.print(y_global, 5);
+    Serial.print(", Phi = ");
+    Serial.println(phi_global, 5);
+  }
+  Serial.print("Matrix Final: X = ");
+  Serial.print(x_global, 5);
+  Serial.print(", Y = ");
+  Serial.print(y_global, 5);
+  Serial.print(", Phi = ");
+  Serial.println(phi_global, 5);
+}
 
-  delay(500);
+void loop()
+{
+//  Serial.print("Current: X = ");
+//  Serial.print(x_global, 5);
+//  Serial.print(", Y = ");
+//  Serial.print(y_global, 5);
+//  Serial.print(", Phi = ");
+//  Serial.println(phi_global, 5);
+//
+//  delay(500);
 }
 
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
