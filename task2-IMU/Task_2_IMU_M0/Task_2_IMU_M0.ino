@@ -1,7 +1,18 @@
 #include <SPI.h>
 #include <WiFi101.h>
 #include <WiFiUdp.h>
+#include <Wire.h>
+#include <LSM303.h>
 #include <math.h>
+
+#define MOTOR_RIGHT_A   12    // Right motor pin
+#define MOTOR_RIGHT_B   11    // Right motor pin
+#define MOTOR_LEFT_A    10    // Left motor pin
+#define MOTOR_LEFT_B    9    // Left motor pin
+#define NORTH           0.0f  // North heading
+#define SOUTH           180.0f  // South heading
+#define EAST            90.0f  // East heading
+#define WEST            270.0f  // West heading
 
 #define SECRET_SSID "Unifi-Home"
 #define SECRET_PASS "montakhebolmolouk"
@@ -25,18 +36,32 @@ char pass[] = SECRET_PASS;
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
 unsigned int localPort = 5005;      // local port to listen on
+unsigned long tick_time, tock_time, desired_control_time = 20;
+
+float desired_angle, error, control, K_p = 0.5;
 
 WiFiUDP Udp;
+LSM303 compass;
+LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32768, -32768, -32768};
 
 void setup()
 {
-  pinMode(12, OUTPUT);
-  pinMode(11, OUTPUT);
-  pinMode(10, OUTPUT);
-  pinMode(9, OUTPUT);
+  pinMode(MOTOR_RIGHT_A, OUTPUT);
+  pinMode(MOTOR_RIGHT_B, OUTPUT);
+  pinMode(MOTOR_LEFT_A, OUTPUT);
+  pinMode(MOTOR_LEFT_B, OUTPUT);
+  analogWrite(MOTOR_RIGHT_A, 0);
+  analogWrite(MOTOR_RIGHT_B, 0);
+  analogWrite(MOTOR_LEFT_A, 0);
+  analogWrite(MOTOR_LEFT_B, 0);
   WiFi.setPins(8, 7, 4, 2);
   Serial.begin(9600);
-  while (!Serial);
+  Wire.begin();
+  compass.init();
+  compass.enableDefault();
+  compass.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
+  compass.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
+//  while (!Serial);
   while ( status != WL_CONNECTED)
   {
     Serial.print("Attempting to connect to WPA SSID: ");
@@ -59,22 +84,78 @@ void setup()
 
 void loop()
 {
-  int packetSize = Udp.parsePacket();
-
-  if (packetSize)
+  desired_angle = SOUTH;
+  
+  while (1)
   {
-    Udp.read((char*)(&input_command), sizeof(command));
-    Serial.println(input_command.translational, 5);
-    Serial.println(input_command.rotational, 5);
-    Serial.println(input_command.mode);
+    // Get time at beginning of P controller loop
+    tick_time = millis();
     
-    cur_info.x = 1.1;
-    cur_info.y = 2.2;
-    cur_info.phi = 3.3;
+    int packetSize = Udp.parsePacket();
+    compass.read();
+    
+    running_min.x = min(running_min.x, compass.m.x);
+    running_min.y = min(running_min.y, compass.m.y);
+    running_min.z = min(running_min.z, compass.m.z);
+  
+    running_max.x = max(running_max.x, compass.m.x);
+    running_max.y = max(running_max.y, compass.m.y);
+    running_max.z = max(running_max.z, compass.m.z);
+  
+    if (packetSize)
+    {
+      Udp.read((char*)(&input_command), sizeof(command));
+      Serial.println(input_command.translational, 5);
+      Serial.println(input_command.rotational, 5);
+      Serial.println(input_command.mode);
+  
+      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+      Udp.write((char*)(&cur_info));
+      Udp.endPacket();
+    }
 
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write((char*)(&cur_info));
-    Udp.endPacket();
+    
+    error = desired_angle - compass.heading();
+    control = error * K_p;
+    
+    Serial.print(compass.heading());
+    Serial.print(" ");
+    Serial.println(control);
+
+//    rotate(control);
+
+    // Get time at end of P controller loop
+    tock_time = millis();
+
+    // Ensure at least the minimum delay has occured for P controller loop
+    delay(desired_control_time - (tock_time - tick_time));
+  }
+}
+
+void rotate(float omega)
+{
+//  float s = abs(omega);
+//  if (s < 51.0f)
+//    s = 51.0f;
+//  else if (s > 255.0f)
+//    s = 255.0f;
+  
+  if (omega > 0.0f)
+  {
+    analogWrite(MOTOR_RIGHT_A, 0);
+    analogWrite(MOTOR_LEFT_A, (int)omega);
+  }
+
+  else if (omega < 0.0f)
+  {
+    analogWrite(MOTOR_LEFT_A, 0);
+    analogWrite(MOTOR_RIGHT_A, (int)omega);
+  }
+
+  else
+  {
+    analogWrite(MOTOR_RIGHT_A, 0);
+    analogWrite(MOTOR_LEFT_A, 0);
   }
 }
 
