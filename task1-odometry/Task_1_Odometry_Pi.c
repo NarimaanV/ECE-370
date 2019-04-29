@@ -78,11 +78,10 @@ int main(int argc, char **argv)
 	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
     serveraddr.sin_port = htons(portno);
 
-    //scanf("%f %f %d", &(input_command.translational), &(input_command.rotational), &(input_command.mode));
-
 	initscr();
 	keypad(stdscr, TRUE);
 	noecho();
+	scrollok(stdscr, TRUE);
 	timeout(-1);
 	
 	while (1)
@@ -103,7 +102,7 @@ int main(int argc, char **argv)
 			input_command.rotational -= 90.0f;
 			break;
 		case 113:
-			printw("Echo from server: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
+			printw("Robot Info: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
 			break;
 		default:
 			break;

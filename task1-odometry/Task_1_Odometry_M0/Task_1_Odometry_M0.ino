@@ -39,7 +39,7 @@ struct __attribute__((__packed__)) robot_info
 // 1/GEAR_RATIO wheel rotations/encoder rotation
 // 1/TICKS_PER_ROT encoder rotation/tick
 // So phi radians / tick = ((RADIUS/BASELINE) phi radians/wheel radians)*(2pi wheel radians/wheel rotation)*(1/GEAR_RATIO wheel rotations/encoder rotation)*(1/TICKS_PER_ROT encoder rotation/tick)
-const float phi_radians_per_tick = (RADIUS / BASELINE) * (2.0f * PI) * (1.0f / 75.81f) * (1.0f / TICKS_PER_ROT);
+const float phi_radians_per_tick = (RADIUS / BASELINE) * (2.0f * PI) * (1.0f / GEAR_RATIO) * (1.0f / TICKS_PER_ROT);
 
 // Constant delta_x and delta_y values based on phi_radians_per_tick used by ISRs
 const float delta_x = (BASELINE / 2.0) * sin(phi_radians_per_tick); // Calculate local delta x based on local phi
@@ -61,11 +61,15 @@ void setup()
   pinMode(MOTOR_LEFT_B, OUTPUT);
   pinMode(IR_RIGHT, INPUT);
   pinMode(IR_LEFT, INPUT);
+  analogWrite(MOTOR_RIGHT_A, 0);
+  analogWrite(MOTOR_RIGHT_B, 0);
+  analogWrite(MOTOR_LEFT_A, 0);
+  analogWrite(MOTOR_LEFT_B, 0);
   attachInterrupt(digitalPinToInterrupt(IR_RIGHT), analytical_odometry_right, RISING);
   attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
   WiFi.setPins(8, 7, 4, 2);
   Serial.begin(9600);
-  while (!Serial);
+//  while (!Serial);
   while ( status != WL_CONNECTED)
   {
     Serial.print("Attempting to connect to WPA SSID: ");
@@ -97,9 +101,9 @@ void loop()
     Serial.println(input_command.rotational, 5);
     Serial.println(input_command.mode);
     
-    cur_info.x = 1.1;
-    cur_info.y = 2.2;
-    cur_info.phi = 3.3;
+//    cur_info.x = 1.1;
+//    cur_info.y = 2.2;
+//    cur_info.phi = 3.3;
 
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     Udp.write((char*)(&cur_info));
