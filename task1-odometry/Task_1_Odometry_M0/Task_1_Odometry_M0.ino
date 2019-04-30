@@ -51,6 +51,8 @@ int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
 unsigned int localPort = 5005;      // local port to listen on
 
+unsigned int right_speed, left_speed;
+
 WiFiUDP Udp;
 
 void setup()
@@ -100,15 +102,20 @@ void loop()
     Serial.println(input_command.translational, 5);
     Serial.println(input_command.rotational, 5);
     Serial.println(input_command.mode);
-    
-//    cur_info.x = 1.1;
-//    cur_info.y = 2.2;
-//    cur_info.phi = 3.3;
 
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     Udp.write((char*)(&cur_info));
     Udp.endPacket();
   }
+
+  right_speed = ((2.0f * input_command.translational) + (input_command.rotational * BASELINE)) / (2.0f * RADIUS);
+  left_speed = ((2.0f * input_command.translational) - (input_command.rotational * BASELINE)) / (2.0f * RADIUS);
+
+  if (right_speed > 255) right_speed = 255;
+  if (left_speed > 255) left_speed = 255;
+  
+  analogWrite(MOTOR_RIGHT_A, right_speed);
+  analogWrite(MOTOR_LEFT_A, left_speed);
 }
 
 void printWiFiData() {

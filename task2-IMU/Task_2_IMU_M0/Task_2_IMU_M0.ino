@@ -38,11 +38,11 @@ int status = WL_IDLE_STATUS;     // the WiFi radio's status
 unsigned int localPort = 5005;      // local port to listen on
 unsigned long tick_time, tock_time, desired_control_time = 20;
 
-float desired_angle, error, control, K_p = 0.5;
+float desired_angle, error, control, K_p = 5.0;
+float angles[5] = {0.0, 180.0, 90.0, 270.0, 0.0}; // North, South, East, West, North
 
 WiFiUDP Udp;
 LSM303 compass;
-LSM303::vector<int16_t> running_min = {32767, 32767, 32767}, running_max = {-32768, -32768, -32768};
 
 void setup()
 {
@@ -59,8 +59,8 @@ void setup()
   Wire.begin();
   compass.init();
   compass.enableDefault();
-  compass.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
-  compass.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
+  compass.m_min = (LSM303::vector<int16_t>){-1415, -3237, -5057};
+  compass.m_max = (LSM303::vector<int16_t>){+5450, +2711, +1409};
 //  while (!Serial);
   while ( status != WL_CONNECTED)
   {
@@ -94,14 +94,6 @@ void loop()
     int packetSize = Udp.parsePacket();
     compass.read();
     
-    running_min.x = min(running_min.x, compass.m.x);
-    running_min.y = min(running_min.y, compass.m.y);
-    running_min.z = min(running_min.z, compass.m.z);
-  
-    running_max.x = max(running_max.x, compass.m.x);
-    running_max.y = max(running_max.y, compass.m.y);
-    running_max.z = max(running_max.z, compass.m.z);
-  
     if (packetSize)
     {
       Udp.read((char*)(&input_command), sizeof(command));
@@ -118,11 +110,11 @@ void loop()
     error = desired_angle - compass.heading();
     control = error * K_p;
     
-    Serial.print(compass.heading());
-    Serial.print(" ");
-    Serial.println(control);
+    Serial.println(compass.heading());
+//    Serial.print(" ");
+//    Serial.println(control);
 
-//    rotate(control);
+    rotate(control);
 
     // Get time at end of P controller loop
     tock_time = millis();
@@ -134,22 +126,22 @@ void loop()
 
 void rotate(float omega)
 {
-//  float s = abs(omega);
-//  if (s < 51.0f)
-//    s = 51.0f;
-//  else if (s > 255.0f)
-//    s = 255.0f;
+  float s = abs(omega);
+  if (s < 51.0f)
+    s = 40.0f;
+  else if (s > 255.0f)
+    s = 255.0f;
   
   if (omega > 0.0f)
   {
     analogWrite(MOTOR_RIGHT_A, 0);
-    analogWrite(MOTOR_LEFT_A, (int)omega);
+    analogWrite(MOTOR_LEFT_A, (int)s);
   }
 
   else if (omega < 0.0f)
   {
     analogWrite(MOTOR_LEFT_A, 0);
-    analogWrite(MOTOR_RIGHT_A, (int)omega);
+    analogWrite(MOTOR_RIGHT_A, (int)s);
   }
 
   else
