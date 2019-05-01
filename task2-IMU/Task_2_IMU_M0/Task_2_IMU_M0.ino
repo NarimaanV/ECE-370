@@ -111,9 +111,9 @@ void loop()
     if (packetSize)
     {
       Udp.read((char*)(&input_command), sizeof(command));
-      Serial.println(input_command.translational, 5);
-      Serial.println(input_command.rotational, 5);
-      Serial.println(input_command.mode);
+//      Serial.println(input_command.translational, 5);
+//      Serial.println(input_command.rotational, 5);
+//      Serial.println(input_command.mode);
   
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
       Udp.write((char*)(&cur_info));
