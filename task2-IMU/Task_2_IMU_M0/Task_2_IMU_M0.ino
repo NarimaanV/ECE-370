@@ -5,10 +5,10 @@
 #include <LSM303.h>
 #include <math.h>
 
-#define MOTOR_RIGHT_A   12    // Right motor pin
-#define MOTOR_RIGHT_B   11    // Right motor pin
-#define MOTOR_LEFT_A    10    // Left motor pin
-#define MOTOR_LEFT_B    9    // Left motor pin
+#define MOTOR_RIGHT_FORWARD   12    // Right motor pin
+#define MOTOR_RIGHT_REVERSE   11    // Right motor pin
+#define MOTOR_LEFT_FORWARD    10    // Left motor pin
+#define MOTOR_LEFT_REVERSE    9    // Left motor pin
 #define NORTH           0.0f  // North heading
 #define SOUTH           180.0f  // South heading
 #define EAST            90.0f  // East heading
@@ -38,22 +38,24 @@ int status = WL_IDLE_STATUS;     // the WiFi radio's status
 unsigned int localPort = 5005;      // local port to listen on
 unsigned long tick_time, tock_time, desired_control_time = 20;
 
-float desired_angle, error, control, K_p = 5.0;
+float desired_angle, error, control, K_p = 4.0;
 float angles[5] = {0.0, 180.0, 90.0, 270.0, 0.0}; // North, South, East, West, North
+unsigned long time_a, time_b;
+unsigned int current = 0;
 
 WiFiUDP Udp;
 LSM303 compass;
 
 void setup()
 {
-  pinMode(MOTOR_RIGHT_A, OUTPUT);
-  pinMode(MOTOR_RIGHT_B, OUTPUT);
-  pinMode(MOTOR_LEFT_A, OUTPUT);
-  pinMode(MOTOR_LEFT_B, OUTPUT);
-  analogWrite(MOTOR_RIGHT_A, 0);
-  analogWrite(MOTOR_RIGHT_B, 0);
-  analogWrite(MOTOR_LEFT_A, 0);
-  analogWrite(MOTOR_LEFT_B, 0);
+  pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
+  pinMode(MOTOR_RIGHT_REVERSE, OUTPUT);
+  pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
+  pinMode(MOTOR_LEFT_REVERSE, OUTPUT);
+  analogWrite(MOTOR_RIGHT_FORWARD, 0);
+  analogWrite(MOTOR_RIGHT_REVERSE, 0);
+  analogWrite(MOTOR_LEFT_FORWARD, 0);
+  analogWrite(MOTOR_LEFT_REVERSE, 0);
   WiFi.setPins(8, 7, 4, 2);
   Serial.begin(9600);
   Wire.begin();
@@ -80,19 +82,31 @@ void setup()
   Serial.println("\nStarting connection to server...");
   // if you get a connection, report back via serial:
   Udp.begin(localPort);
+
+  time_a = millis();
+  time_b = millis();
 }
 
 void loop()
 {
-  desired_angle = SOUTH;
+  
   
   while (1)
   {
     // Get time at beginning of P controller loop
     tick_time = millis();
+    time_b = millis();
+    if (time_b - time_a >= 10000 && current <= 4)
+    {
+      time_a = time_b;
+      current++;
+    }
+
+    desired_angle = angles[current];
     
     int packetSize = Udp.parsePacket();
     compass.read();
+    cur_info.phi = compass.heading();
     
     if (packetSize)
     {
@@ -106,13 +120,20 @@ void loop()
       Udp.endPacket();
     }
 
+    error = abs(desired_angle - compass.heading());
+
+    if (error > 180.0f)
+      error = 360.0f - error;
+    else
+      error = desired_angle - compass.heading();
     
-    error = desired_angle - compass.heading();
     control = error * K_p;
-    
-    Serial.println(compass.heading());
-//    Serial.print(" ");
-//    Serial.println(control);
+
+    Serial.print(desired_angle);
+    Serial.print(" ");
+    Serial.print(compass.heading());
+    Serial.print(" ");
+    Serial.println(error);
 
     rotate(control);
 
@@ -127,27 +148,33 @@ void loop()
 void rotate(float omega)
 {
   float s = abs(omega);
-  if (s < 51.0f)
+  if (s < 40.0f)
     s = 40.0f;
   else if (s > 255.0f)
     s = 255.0f;
   
   if (omega > 0.0f)
   {
-    analogWrite(MOTOR_RIGHT_A, 0);
-    analogWrite(MOTOR_LEFT_A, (int)s);
+    analogWrite(MOTOR_LEFT_REVERSE, 0);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_REVERSE, (int)s);
+    analogWrite(MOTOR_LEFT_FORWARD, (int)s);
   }
 
   else if (omega < 0.0f)
   {
-    analogWrite(MOTOR_LEFT_A, 0);
-    analogWrite(MOTOR_RIGHT_A, (int)s);
+     analogWrite(MOTOR_RIGHT_REVERSE, 0);
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_REVERSE, (int)s);
+    analogWrite(MOTOR_RIGHT_FORWARD, (int)s);
   }
 
   else
   {
-    analogWrite(MOTOR_RIGHT_A, 0);
-    analogWrite(MOTOR_LEFT_A, 0);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_REVERSE, 0);
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_REVERSE, 0);
   }
 }
 
