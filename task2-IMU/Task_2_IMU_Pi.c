@@ -83,6 +83,7 @@ int main(int argc, char **argv)
 	initscr();
 	keypad(stdscr, TRUE);
 	noecho();
+	scrollok(stdscr, TRUE);
 	timeout(-1);
 	
 	while (1)

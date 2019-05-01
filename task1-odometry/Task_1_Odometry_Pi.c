@@ -102,10 +102,10 @@ int main(int argc, char **argv)
 				input_command.translational -= 50.0f;
 			break;
 		case KEY_LEFT:
-			input_command.rotational += 10.0f;
+			input_command.rotational -= 10.0f;
 			break;
 		case KEY_RIGHT:
-			input_command.rotational -= 10.0f;
+			input_command.rotational += 10.0f;
 			break;
 		case 113:
 			printw("Robot Info: %f, %f, %f\n", cur_info.x, cur_info.y, cur_info.phi);
