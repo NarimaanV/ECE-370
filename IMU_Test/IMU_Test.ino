@@ -10,8 +10,8 @@ void setup()
   Wire.begin();
   compass.init();
   compass.enableDefault();
-  compass.m_min = (LSM303::vector<int16_t>){-32767, -32767, -32767};
-  compass.m_max = (LSM303::vector<int16_t>){+32767, +32767, +32767};
+  compass.m_min = (LSM303::vector<int16_t>){+1962, -4001, -923};
+  compass.m_max = (LSM303::vector<int16_t>){+10028, +3653, +6260};
 }
 
 void loop()
@@ -33,7 +33,7 @@ void loop()
   Serial.print((double)compass.m.z * 0.160 / 1000.0);
   Serial.print(" gauss        ");
   Serial.print("Heading: ");
-  Serial.println(compass.heading());
+  Serial.println(compass.heading((LSM303::vector<int>){-1, 0, 0}));
 
 
   delay(100);
