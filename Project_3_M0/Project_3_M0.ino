@@ -31,13 +31,17 @@ struct __attribute__((__packed__)) robot_info
 {
   double odo[3];
   double imu[6];
-  double heading;
+  double head;
 } cur_info = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0};
 
 char ssid[] = "Narimaan-M0";
 int status = WL_IDLE_STATUS;
 
 unsigned long info_time;
+
+unsigned int send_port = 4242, receive_port = 5005;
+
+WiFiUDP send_udp, receive_udp;
 
 void setup()
 {
@@ -59,10 +63,19 @@ void setup()
     while (true);
   }
 
+  send_udp.begin(send_port);
+  receive_udp.begin(receive_port);
+
   info_time = millis();
 }
 
 void loop()
 {
-
+  if (millis() - info_time >= 100)
+  {
+    send_udp.beginPacket(send_udp.remoteIP(), send_port);
+    send_udp.write((char*)(&cur_info));
+    send_udp.endPacket();
+    info_time = millis();
+  }
 }
