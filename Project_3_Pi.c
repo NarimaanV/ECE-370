@@ -25,7 +25,7 @@ void error(char *msg) {
 struct __attribute__((__packed__)) command
 {
   float translational;
-  float rotational;
+  float angle;
   int mode;
 } input_command = {1.0, 2.0, 3.0};
 
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	
 	/* socket: create the socket */
 	receive_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (send_sockfd < 0) 
+	if (receive_sockfd < 0) 
 		error("ERROR opening socket");
 
 	/* gethostbyname: get the server's DNS entry */
@@ -117,24 +117,38 @@ int main(int argc, char **argv)
 				input_command.translational -= 50.0f;
 			break;
 		case KEY_LEFT:
-			input_command.rotational -= 10.0f;
+			input_command.mode = 0;
+			input_command.angle -= 15.0f;
 			break;
 		case KEY_RIGHT:
-			input_command.rotational += 10.0f;
+			input_command.mode = 0;
+			input_command.angle += 15.0f;
 			break;
 		case 113:
 			printw("Robot Info: %f, %f, %f\n", cur_info.odo[0], cur_info.imu[0], cur_info.head);
 			break;
+		case 119:
+			input_command.mode = 1;
+			break;
+		case 97:
+			input_command.mode = 2;
+			break;
+		case 115:
+			input_command.mode = 3;
+			break;
+		case 100:
+			input_command.mode = 4;
 		default:
 			break;
 		}
 		
-		printw("Waiting...\n");
 		send_command(input_command, send_sockfd, send_serveraddr);
-		cur_info = receive_info(receive_sockfd, receive_serveraddr);
-		printw("Robot Info: %f, %f, %f\n", cur_info.odo[0], cur_info.imu[0], cur_info.head);
+		//cur_info = receive_info(send_sockfd, send_serveraddr);
+		//printw("Robot Info: %f, %f, %f\n", cur_info.odo[0], cur_info.imu[0], cur_info.head);
+		refresh();
 	}
 
+	endwin();
     return 0;
 }
 

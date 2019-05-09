@@ -9,6 +9,7 @@
 #define RADIUS          58.4f // Wheel radii in mm 31.4/2
 #define BASELINE        87.5f // Transaxial distance between center of each wheels 82.4
 #define GEAR_RATIO      75.81f // Gear ratio of motor gearbox (input/output) 75.81
+#define TICKS_PER_ROT   2.0f  // How many ticks will register per rotation of encoder wheel (depends on both encoder design AND what edge(s) trigger interrupts)
 #define MOTOR_RIGHT_FORWARD   12    // Right motor pin
 #define MOTOR_RIGHT_REVERSE   11    // Right motor pin
 #define MOTOR_LEFT_FORWARD    10    // Left motor pin
@@ -26,7 +27,7 @@
 struct __attribute__((__packed__)) command
 {
   float translational;
-  float rotational;
+  float angle;
   int mode;
 } input_command;
 
@@ -47,10 +48,31 @@ unsigned long info_time;
 
 int packetSize;
 
+unsigned int reset = 0;
+
+float desired_angle, start_angle, error, control, K_p = 5.0;
+
 unsigned int send_port = 4242, receive_port = 5005;
+unsigned long tick_time, tock_time, desired_control_time = 10;
+
+// Phi angle radians per single tick
+// (RADIUS/BASELINE) phi radians/wheel radians 
+// 2pi wheel radians/wheel rotation
+// 1/GEAR_RATIO wheel rotations/encoder rotation
+// 1/TICKS_PER_ROT encoder rotation/tick
+// So phi radians / tick = ((RADIUS/BASELINE) phi radians/wheel radians)*(2pi wheel radians/wheel rotation)*(1/GEAR_RATIO wheel rotations/encoder rotation)*(1/TICKS_PER_ROT encoder rotation/tick)
+const float phi_radians_per_tick = (RADIUS / BASELINE) * (2.0f * PI) * (1.0f / GEAR_RATIO) * (1.0f / TICKS_PER_ROT);
+
+// Constant delta_x and delta_y values based on phi_radians_per_tick used by ISRs
+const float delta_x = (BASELINE / 2.0) * sin(phi_radians_per_tick); // Calculate local delta x based on local phi
+const float delta_y = (BASELINE / 2.0) - ((BASELINE / 2.0) * cos(phi_radians_per_tick)); // Calculate local delta y based on local phi
+
+float acc_y;
 
 WiFiUDP send_udp, receive_udp;
-//WiFiUDP Udp;
+IPAddress m0(192, 168, 1, 74);
+IPAddress pi(192, 168, 1, 72);
+LSM303 compass;
 
 void setup()
 {
@@ -63,134 +85,141 @@ void setup()
   analogWrite(MOTOR_RIGHT_REVERSE, 0);
   analogWrite(MOTOR_LEFT_FORWARD, 0);
   analogWrite(MOTOR_LEFT_REVERSE, 0);
-
+  attachInterrupt(digitalPinToInterrupt(IR_RIGHT), analytical_odometry_right, RISING);
+  attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
+  Wire.begin();
+  compass.init();
+  compass.enableDefault();
+  compass.m_min = (LSM303::vector<int16_t>){+1962, -4001, -923};
+  compass.m_max = (LSM303::vector<int16_t>){+10028, +3653, +6260};
+  
   WiFi.setPins(8, 7, 4, 2);
-//  WiFi.config(IPAddress(10, 0, 0, 1));
-//  status = WiFi.beginAP(ssid);
-//  if (status != WL_AP_LISTENING) {
-//    Serial.println("Creating access point failed");
-//    // don't continue
-//    while (true);
-//  }
-//
-//  send_udp.begin(send_port);
-//  receive_udp.begin(receive_port);
-
-  while ( status != WL_CONNECTED)
+  while (status != WL_CONNECTED)
   {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network:
     status = WiFi.begin(ssid, pass); 
-
-    // wait 10 seconds for connection:
-    delay(5000);
+    delay(3000);
   }
-
-  Serial.print("You're connected to the network");
-  printCurrentNet();
-  printWiFiData();
-
-  Serial.println("\nStarting connection to server...");
-  // if you get a connection, report back via serial:
-//  Udp.begin(localPort);
+  
   send_udp.begin(send_port);
   receive_udp.begin(receive_port);
 
   info_time = millis();
-//  while(!(packetSize = Udp.parsePacket()));
-//
-//  if (packetSize)
-//  {
-//    Udp.read((char*)(&input_command), sizeof(command));
-//    Serial.println(input_command.translational, 5);
-//    Serial.println(input_command.rotational, 5);
-//    Serial.println(input_command.mode);
-//
-//    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-//    Udp.write((char*)(&cur_info));
-//    Udp.endPacket();
-//  }
+  compass.read();
+  start_angle = compass.heading((LSM303::vector<int>){-1, 0, 0});
 }
 
 void loop()
 {
-//  if (millis() - info_time >= 100)
-//  {
-//    cur_info.odo[0] = 3.5;
-//    cur_info.imu[0] = 6.1;
-//    cur_info.head = 50.0;
-//    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-//    Udp.write((char*)(&cur_info));
-//    Udp.endPacket();
-//    info_time = millis();
-//  }
-//  delay(1000);
-
+  tick_time = millis();
+  
   if (packetSize = receive_udp.parsePacket())
-  {
     receive_udp.read((char*)(&input_command), sizeof(command));
-    Serial.println(input_command.translational, 5);
-    Serial.println(input_command.rotational, 5);
-    Serial.println(input_command.mode);
 
-    send_udp.beginPacket(receive_udp.remoteIP(), receive_udp.remotePort());
-    send_udp.write((char*)(&cur_info));
-    send_udp.endPacket();
-  }
-}
+  compass.read();
+  cur_info.odo[2] = compass.heading((LSM303::vector<int>){-1, 0, 0});
+  acc_y = (float)compass.a.y * 0.061 / 1000.0;
 
-void printWiFiData() {
-  // print your WiFi shield's IP address:
-  IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-  Serial.println(ip);
-
-  // print your MAC address:
-  byte mac[6];
-  WiFi.macAddress(mac);
-  Serial.print("MAC address: ");
-  printMacAddress(mac);
-
-}
-
-void printCurrentNet() {
-  // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
-
-  // print the MAC address of the router you're attached to:
-  byte bssid[6];
-  WiFi.BSSID(bssid);
-  Serial.print("BSSID: ");
-  printMacAddress(bssid);
-
-  // print the received signal strength:
-  long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.println(rssi);
-
-  // print the encryption type:
-  byte encryption = WiFi.encryptionType();
-  Serial.print("Encryption Type:");
-  Serial.println(encryption, HEX);
-  Serial.println();
-}
-
-void printMacAddress(byte mac[])
-{
-  for (int i = 5; i >= 0; i--)
+  if (acc_y > 1.15f)
   {
-    if (mac[i] < 16)
-    {
-      Serial.print("0");
-    }
-    Serial.print(mac[i], HEX);
-    if (i > 0)
-    {
-      Serial.print(":");
-    }
+    rotate(0.0);
+    reset = 1;
   }
-  Serial.println();
+
+  switch (input_command.mode)
+  {
+    case 0:
+      desired_angle = start_angle + input_command.angle;
+      if (desired_angle > 360.0f)
+        desired_angle -= 360.0f;
+      else if (desired_angle < 0.0f)
+        desired_angle += 360.0f;
+      break;
+    case 1:
+      start_angle = desired_angle = 0.0f;
+      input_command.mode = 5;
+      break;
+    case 2:
+      start_angle = desired_angle = 270.0f;
+      input_command.mode = 5;
+      break;
+    case 3:
+      start_angle = desired_angle = 180.0f;
+      input_command.mode = 5;
+      break;
+    case 4:
+      start_angle = desired_angle = 190.0f;
+      input_command.mode = 5;
+      break;
+    default:
+      break;
+  }
+
+  if (!reset)
+  {
+    error = abs(desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0}));
+  
+    if (error > 180.0f)
+      error = 360.0f - error;
+    else
+      error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
+    
+    control = error * K_p;
+  
+    rotate(control);
+  }
+
+  // Get time at end of P controller loop
+  tock_time = millis();
+
+  // Ensure at least the minimum delay has occured for P controller loop
+  delay(desired_control_time - (tock_time - tick_time));
+}
+
+void rotate(float omega)
+{
+  float s = abs(omega);
+  if (s < 30.0f)
+    s = 30.0f;
+  else if (s > 200.0f)
+    s = 200.0f;
+  
+  if (omega > 0.0f)
+  {
+    analogWrite(MOTOR_LEFT_REVERSE, 0);
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_REVERSE, (int)s);
+    analogWrite(MOTOR_LEFT_FORWARD, (int)s);
+  }
+
+  else if (omega < 0.0f)
+  {
+     analogWrite(MOTOR_RIGHT_REVERSE, 0);
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_REVERSE, (int)s);
+    analogWrite(MOTOR_RIGHT_FORWARD, (int)s);
+  }
+
+  else
+  {
+    analogWrite(MOTOR_RIGHT_FORWARD, 0);
+    analogWrite(MOTOR_RIGHT_REVERSE, 0);
+    analogWrite(MOTOR_LEFT_FORWARD, 0);
+    analogWrite(MOTOR_LEFT_REVERSE, 0);
+  }
+}
+
+// ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
+void analytical_odometry_right()
+{ 
+  cur_info.odo[2] += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  cur_info.odo[0] += (delta_x * cos(cur_info.odo[2])) + (delta_y * sin(cur_info.odo[2]));  // Update global x based on global phi and local delta x and y
+  cur_info.odo[1] += (delta_x * sin(cur_info.odo[2])) + (delta_y * cos(cur_info.odo[2]));  // Update global y based on global phi and local delta x and y
+}
+
+// ISR for calculating odometry of left wheel based on IR sensor signal using analytical method
+void analytical_odometry_left()
+{
+  cur_info.odo[2] -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  cur_info.odo[0] += (delta_x * cos(cur_info.odo[2])) + (delta_y * sin(cur_info.odo[2]));  // Update global x based on global phi and local delta x and y
+  cur_info.odo[1] -= (delta_x * sin(cur_info.odo[2])) + (delta_y * cos(cur_info.odo[2]));  // Update global y based on global phi and local delta x and y
 }
