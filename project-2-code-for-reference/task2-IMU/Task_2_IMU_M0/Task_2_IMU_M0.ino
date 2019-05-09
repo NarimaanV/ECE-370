@@ -36,9 +36,9 @@ char pass[] = SECRET_PASS;
 int status = WL_IDLE_STATUS;     // the WiFi radio's status
 
 unsigned int localPort = 5005;      // local port to listen on
-unsigned long tick_time, tock_time, desired_control_time = 20;
+unsigned long tick_time, tock_time, desired_control_time = 10;
 
-float desired_angle, error, control, K_p = 4.0;
+float desired_angle, error, control, K_p = 2.0;
 float angles[5] = {0.0, 180.0, 90.0, 270.0, 0.0}; // North, South, East, West, North
 unsigned long time_a, time_b;
 unsigned int current = 0;
@@ -61,27 +61,27 @@ void setup()
   Wire.begin();
   compass.init();
   compass.enableDefault();
-  compass.m_min = (LSM303::vector<int16_t>){-1415, -3237, -5057};
-  compass.m_max = (LSM303::vector<int16_t>){+5450, +2711, +1409};
+  compass.m_min = (LSM303::vector<int16_t>){+1962, -4001, -923};
+  compass.m_max = (LSM303::vector<int16_t>){+10028, +3653, +6260};
 //  while (!Serial);
-  while ( status != WL_CONNECTED)
-  {
-    Serial.print("Attempting to connect to WPA SSID: ");
-    Serial.println(ssid);
-    // Connect to WPA/WPA2 network:
-    status = WiFi.begin(ssid, pass); 
-
-    // wait 10 seconds for connection:
-    delay(5000);
-  }
-
-  Serial.print("You're connected to the network");
-  printCurrentNet();
-  printWiFiData();
-
-  Serial.println("\nStarting connection to server...");
-  // if you get a connection, report back via serial:
-  Udp.begin(localPort);
+//  while ( status != WL_CONNECTED)
+//  {
+//    Serial.print("Attempting to connect to WPA SSID: ");
+//    Serial.println(ssid);
+//    // Connect to WPA/WPA2 network:
+//    status = WiFi.begin(ssid, pass); 
+//
+//    // wait 10 seconds for connection:
+//    delay(5000);
+//  }
+//
+//  Serial.print("You're connected to the network");
+//  printCurrentNet();
+//  printWiFiData();
+//
+//  Serial.println("\nStarting connection to server...");
+//  // if you get a connection, report back via serial:
+//  Udp.begin(localPort);
 
   time_a = millis();
   time_b = millis();
@@ -106,7 +106,7 @@ void loop()
     
     int packetSize = Udp.parsePacket();
     compass.read();
-    cur_info.phi = compass.heading();
+    cur_info.phi = compass.heading((LSM303::vector<int>){-1, 0, 0});
     
     if (packetSize)
     {
@@ -120,18 +120,18 @@ void loop()
       Udp.endPacket();
     }
 
-    error = abs(desired_angle - compass.heading());
+    error = abs(desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0}));
 
     if (error > 180.0f)
       error = 360.0f - error;
     else
-      error = desired_angle - compass.heading();
+      error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
     
     control = error * K_p;
 
     Serial.print(desired_angle);
     Serial.print(" ");
-    Serial.print(compass.heading());
+    Serial.print(compass.heading((LSM303::vector<int>){-1, 0, 0}));
     Serial.print(" ");
     Serial.println(error);
 
@@ -148,10 +148,10 @@ void loop()
 void rotate(float omega)
 {
   float s = abs(omega);
-  if (s < 40.0f)
-    s = 40.0f;
-  else if (s > 255.0f)
-    s = 255.0f;
+  if (s < 30.0f)
+    s = 30.0f;
+  else if (s > 200.0f)
+    s = 200.0f;
   
   if (omega > 0.0f)
   {

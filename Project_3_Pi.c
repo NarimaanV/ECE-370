@@ -27,26 +27,26 @@ struct __attribute__((__packed__)) command
   float translational;
   float rotational;
   int mode;
-} input_command;
+} input_command = {1.0, 2.0, 3.0};
 
 struct __attribute__((__packed__)) robot_info
 {
   double odo[3];
   double imu[6];
   double head;
-} cur_info = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0};
+} cur_info = {{1.0, 2.0, 3.0}, {4.0, 5.0, 6.0, 7.0, 8.0, 9.0}, 10.0};
 
 void send_command(struct command c, int sockfd, struct sockaddr_in serveraddr);
 struct robot_info receive_info(int sockfd, struct sockaddr_in serveraddr);
 
 int main(int argc, char **argv)
 {
-    int sockfd, portno, n;
-    int serverlen;
-    struct sockaddr_in serveraddr;
-    struct hostent *server;
-    char *hostname;
-    int key;
+	int send_sockfd, receive_sockfd, send_port = 5005, receive_port = 4242, n;
+	int serverlen;
+	struct sockaddr_in send_serveraddr, receive_serveraddr;
+	struct hostent *send_server, *receive_server;
+	char *hostname;
+	int key;
 
 	initscr();
 	keypad(stdscr, TRUE);
@@ -54,45 +54,54 @@ int main(int argc, char **argv)
 	scrollok(stdscr, TRUE);
 	timeout(-1);
 
-	while(1)
-		printw("1\n");
-
 	/* check command line arguments */
-	if (argc != 3) {
-		fprintf(stderr,"usage: %s <hostname> <port>\n", argv[0]);
+	if (argc != 2) {
+		fprintf(stderr,"usage: %s <hostname>\n", argv[0]);
 		exit(0);
 	}
 	hostname = argv[1];
-	portno = atoi(argv[2]);
 
-    /* socket: create the socket */
-    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
+	/* socket: create the socket */
+	send_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (send_sockfd < 0) 
+		error("ERROR opening socket");
+	
+	/* socket: create the socket */
+	receive_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (send_sockfd < 0) 
+		error("ERROR opening socket");
 
+	/* gethostbyname: get the server's DNS entry */
+	send_server = gethostbyname(hostname);
+	if (send_server == NULL) {
+		fprintf(stderr,"ERROR, no such host as %s\n", hostname);
+		exit(0);
+	}
+	
+	/* gethostbyname: get the server's DNS entry */
+	receive_server = gethostbyname(hostname);
+	if (receive_server == NULL) {
+		fprintf(stderr,"ERROR, no such host as %s\n", hostname);
+		exit(0);
+	}
 
-	printw("2\n");	
+	/* build the server's Internet address */
+	bzero((char *) &send_serveraddr, sizeof(send_serveraddr));
+	send_serveraddr.sin_family = AF_INET;
+	bcopy((char *)send_server->h_addr,
+			(char *)&send_serveraddr.sin_addr.s_addr, send_server->h_length);
+	send_serveraddr.sin_port = htons(send_port);
 
-    /* gethostbyname: get the server's DNS entry */
-    server = gethostbyname(hostname);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host as %s\n", hostname);
-        exit(0);
-    }
-
-    printw("1!\n");
-
-    /* build the server's Internet address */
-    bzero((char *) &serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-	  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
-    serveraddr.sin_port = htons(portno);
-
+	/* build the server's Internet address */
+	bzero((char *) &receive_serveraddr, sizeof(receive_serveraddr));
+	receive_serveraddr.sin_family = AF_INET;
+	bcopy((char *)receive_server->h_addr,
+			(char *)&receive_serveraddr.sin_addr.s_addr, receive_server->h_length);
+	receive_serveraddr.sin_port = htons(receive_port);
 	
 	while (1)
 	{
-		//key = getch();
+		key = getch();
 		switch (key)
 		{
 		case KEY_UP:
@@ -121,8 +130,8 @@ int main(int argc, char **argv)
 		}
 		
 		printw("Waiting...\n");
-		//send_command(input_command, sockfd, serveraddr);
-		cur_info = receive_info(sockfd, serveraddr); 
+		send_command(input_command, send_sockfd, send_serveraddr);
+		cur_info = receive_info(receive_sockfd, receive_serveraddr);
 		printw("Robot Info: %f, %f, %f\n", cur_info.odo[0], cur_info.imu[0], cur_info.head);
 	}
 
