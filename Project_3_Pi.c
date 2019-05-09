@@ -27,7 +27,7 @@ struct __attribute__((__packed__)) command
   float translational;
   float angle;
   int mode;
-} input_command = {1.0, 2.0, 3.0};
+} input_command = {0.0, 0.0, 0.0};
 
 struct __attribute__((__packed__)) robot_info
 {
@@ -106,15 +106,17 @@ int main(int argc, char **argv)
 		{
 		case KEY_UP:
 			if (input_command.translational == 0.0f)
-				input_command.translational = 700.0f;
+				input_command.translational = 100.0f;
 			else
 				input_command.translational += 50.0f;
+			printw("%f\n", input_command.translational);
 			break;
 		case KEY_DOWN:
-			if (input_command.translational == 700.0f)
+			if (input_command.translational == 100.0f)
 				input_command.translational = 0.0f;
 			else
 				input_command.translational -= 50.0f;
+			printw("%f\n", input_command.translational);
 			break;
 		case KEY_LEFT:
 			input_command.mode = 0;
@@ -129,15 +131,19 @@ int main(int argc, char **argv)
 			break;
 		case 119:
 			input_command.mode = 1;
+			input_command.angle += 0.0f;
 			break;
 		case 97:
 			input_command.mode = 2;
+			input_command.angle += 0.0f;
 			break;
 		case 115:
 			input_command.mode = 3;
+			input_command.angle += 0.0f;
 			break;
 		case 100:
 			input_command.mode = 4;
+			input_command.angle += 0.0f;
 		default:
 			break;
 		}

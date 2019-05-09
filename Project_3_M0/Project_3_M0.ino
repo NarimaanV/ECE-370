@@ -50,7 +50,7 @@ int packetSize;
 
 unsigned int reset = 0;
 
-float desired_angle, start_angle, error, control, K_p = 5.0;
+float desired_angle, start_angle, error, control, K_p = 3.0;
 
 unsigned int send_port = 4242, receive_port = 5005;
 unsigned long tick_time, tock_time, desired_control_time = 10;
@@ -125,9 +125,13 @@ void loop()
     reset = 1;
   }
 
+  
+
+
   switch (input_command.mode)
   {
     case 0:
+      K_p = 3.0;
       desired_angle = start_angle + input_command.angle;
       if (desired_angle > 360.0f)
         desired_angle -= 360.0f;
@@ -135,19 +139,23 @@ void loop()
         desired_angle += 360.0f;
       break;
     case 1:
+      K_p = 2.0;
       start_angle = desired_angle = 0.0f;
       input_command.mode = 5;
       break;
     case 2:
+      K_p = 2.0;
       start_angle = desired_angle = 270.0f;
       input_command.mode = 5;
       break;
     case 3:
+      K_p = 2.0;
       start_angle = desired_angle = 180.0f;
       input_command.mode = 5;
       break;
     case 4:
-      start_angle = desired_angle = 190.0f;
+      K_p = 2.0;
+      start_angle = desired_angle = 90.0f;
       input_command.mode = 5;
       break;
     default:
@@ -155,6 +163,12 @@ void loop()
   }
 
   if (!reset)
+  {
+    analogWrite(MOTOR_RIGHT_FORWARD, input_command.translational);
+    analogWrite(MOTOR_LEFT_FORWARD, input_command.translational);
+  }
+
+  if (!reset && !input_command.translational)
   {
     error = abs(desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0}));
   
