@@ -26,8 +26,8 @@
 
 struct __attribute__((__packed__)) command
 {
-  float translational;
-  float angle;
+  double translational;
+  double angle;
   int mode;
 } input_command;
 
@@ -77,6 +77,7 @@ LSM303 compass;
 void setup()
 {
   Serial.begin(9600);
+  while(!Serial);
   pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
   pinMode(MOTOR_RIGHT_REVERSE, OUTPUT);
   pinMode(MOTOR_LEFT_FORWARD, OUTPUT);
@@ -96,9 +97,15 @@ void setup()
   WiFi.setPins(8, 7, 4, 2);
   while (status != WL_CONNECTED)
   {
-    status = WiFi.begin(ssid, pass); 
+    Serial.print("Attempting to connect to WPA SSID: ");
+    Serial.println(ssid);
+    status = WiFi.begin(ssid, pass);
     delay(3000);
   }
+
+  Serial.print("You're connected to the network");
+  printCurrentNet();
+  printWiFiData();
   
   send_udp.begin(send_port);
   receive_udp.begin(receive_port);
@@ -115,6 +122,17 @@ void loop()
   if (packetSize = receive_udp.parsePacket())
     receive_udp.read((char*)(&input_command), sizeof(command));
 
+  if (millis() - info_time >= 1000)
+  {
+    send_udp.beginPacket(pi, send_port);
+    char send_buffer[1024] = { 0 };
+    memcpy(send_buffer, &cur_info, sizeof(robot_info));
+    send_udp.write(send_buffer, sizeof(robot_info));
+    send_udp.endPacket();
+    Serial.println("Sent!");
+    info_time = millis();
+  }
+
   compass.read();
   cur_info.odo[2] = compass.heading((LSM303::vector<int>){-1, 0, 0});
   acc_y = (float)compass.a.y * 0.061 / 1000.0;
@@ -124,9 +142,6 @@ void loop()
     rotate(0.0);
     reset = 1;
   }
-
-  
-
 
   switch (input_command.mode)
   {
@@ -220,6 +235,57 @@ void rotate(float omega)
     analogWrite(MOTOR_LEFT_FORWARD, 0);
     analogWrite(MOTOR_LEFT_REVERSE, 0);
   }
+}
+
+void printWiFiData() {
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+  Serial.println(ip);
+
+  // print your MAC address:
+  byte mac[6];
+  WiFi.macAddress(mac);
+  Serial.print("MAC address: ");
+  printMacAddress(mac);
+
+}
+
+void printCurrentNet() {
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print the MAC address of the router you're attached to:
+  byte bssid[6];
+  WiFi.BSSID(bssid);
+  Serial.print("BSSID: ");
+  printMacAddress(bssid);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.println(rssi);
+
+  // print the encryption type:
+  byte encryption = WiFi.encryptionType();
+  Serial.print("Encryption Type:");
+  Serial.println(encryption, HEX);
+  Serial.println();
+}
+
+void printMacAddress(byte mac[]) {
+  for (int i = 5; i >= 0; i--) {
+    if (mac[i] < 16) {
+      Serial.print("0");
+    }
+    Serial.print(mac[i], HEX);
+    if (i > 0) {
+      Serial.print(":");
+    }
+  }
+  Serial.println();
 }
 
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
