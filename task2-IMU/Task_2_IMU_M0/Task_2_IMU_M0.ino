@@ -46,6 +46,8 @@ unsigned int current = 0;
 WiFiUDP Udp;
 LSM303 compass;
 
+int packetSize;
+
 void setup()
 {
   pinMode(MOTOR_RIGHT_FORWARD, OUTPUT);
@@ -61,8 +63,8 @@ void setup()
   Wire.begin();
   compass.init();
   compass.enableDefault();
-  compass.m_min = (LSM303::vector<int16_t>){-1415, -3237, -5057};
-  compass.m_max = (LSM303::vector<int16_t>){+5450, +2711, +1409};
+  compass.m_min = (LSM303::vector<int16_t>){+1962, -4001, -923};
+  compass.m_max = (LSM303::vector<int16_t>){+10028, +3653, +6260};
 //  while (!Serial);
   while ( status != WL_CONNECTED)
   {
@@ -111,23 +113,22 @@ void loop()
       Udp.endPacket();
     }
     
-
     desired_angle = angles[current];
     
-    int packetSize = Udp.parsePacket();
+//    int packetSize = Udp.parsePacket();
     compass.read();
-    cur_info.phi = compass.compass.heading((LSM303::vector<int>){-1, 0, 0});
-    
-    if (packetSize)
-    {
-      Udp.read((char*)(&input_command), sizeof(command));
-//      Serial.println(input_command.translational, 5);
-//      Serial.println(input_command.rotational, 5);
-//      Serial.println(input_command.mode);
-  
-      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      Udp.write((char*)(&cur_info));
-      Udp.endPacket();
+    cur_info.phi = compass.heading((LSM303::vector<int>){-1, 0, 0});
+//    
+//    if (packetSize)
+//    {
+//      Udp.read((char*)(&input_command), sizeof(command));
+////      Serial.println(input_command.translational, 5);
+////      Serial.println(input_command.rotational, 5);
+////      Serial.println(input_command.mode);
+//  
+//      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+//      Udp.write((char*)(&cur_info));
+//      Udp.endPacket();
     }
 
     error = abs(desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0}));
@@ -137,13 +138,13 @@ void loop()
     else
       error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
     
-    control = error * K_p;
-
-    Serial.print(desired_angle);
-    Serial.print(" ");
-    Serial.print(compass.heading());
-    Serial.print(" ");
-    Serial.println(error);
+//    control = error * K_p;
+//
+//    Serial.print(desired_angle);
+//    Serial.print(" ");
+//    Serial.print(compass.heading());
+//    Serial.print(" ");
+//    Serial.println(error);
 
     rotate(control);
 
@@ -151,8 +152,8 @@ void loop()
     tock_time = millis();
 
     // Ensure at least the minimum delay has occured for P controller loop
-    delay(desired_control_time - (tock_time - tick_time));
-  }
+    if (desired_control_time - (tock_time - tick_time) > 0)
+      delay(desired_control_time - (tock_time - tick_time));
 }
 
 void rotate(float omega)

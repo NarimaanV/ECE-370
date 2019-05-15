@@ -103,14 +103,7 @@ void setup()
 
 void loop()
 {
-  // Read incoming packet and respond with current odometry
-  if (packetSize = Udp.parsePacket())
-  {
-    Udp.read((char*)(&input_command), sizeof(command));
-    Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write((char*)(&cur_info), sizeof(cur_info));
-    Udp.endPacket();
-  }
+
 
   // Calculate speed for each wheel
   right_speed = ((2.0 * input_command.translational) + (input_command.rotational * BASELINE)) / (2.0 * RADIUS);

@@ -48,7 +48,7 @@ while True:
     (x, y, phi) = unpack("=ddd", input_buffer)
 
     if print_info == True:
-        print "Odometry: x = {0:.2f} mm, y = {1:.2f} mm, phi = {2:.2f} degrees".format(x, y, phi)
+        print "Heading: {2:.2f} degrees".format(x, y, phi)
 
         print_info = False
 
