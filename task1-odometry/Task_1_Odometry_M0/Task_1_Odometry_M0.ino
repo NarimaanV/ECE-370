@@ -104,7 +104,7 @@ void loop()
   {
     Udp.read((char*)(&input_command), sizeof(command));
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-    Udp.write((char*)(&cur_info));
+    Udp.write((char*)(&cur_info), sizeof(cur_info));
     Udp.endPacket();
   }
 

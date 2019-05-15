@@ -19,23 +19,25 @@ phi = 0.0
 
 print_info = False
 
+print "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+
 while True:
     key = getkey()
 
     if key == keys.UP:
         if translational == 0.0:
-            translational = 2000.0
+            translational = 1500.0
         else:
             translational += 1000.0
     elif key == keys.DOWN:
-        if translational <= 2000.0:
+        if translational <= 1500.0:
             translational = 0.0
         else:
             translational -= 1000.0
     elif key == keys.LEFT:
-        rotational -= 15.0
+        rotational -= 1.0
     elif key == keys.RIGHT:
-        rotational += 15.0
+        rotational += 1.0
     elif key == 'q':
         print_info = True
     else:
@@ -46,7 +48,7 @@ while True:
     (x, y, phi) = unpack("=ddd", input_buffer)
 
     if print_info == True:
-        print "Odometry: x = {} mm, y = {} mm, phi = {} degrees".format(x, y,
-                phi)
+        print "Odometry: x = {0:.2f} mm, y = {1:.2f} mm, phi = {2:.2f} degrees".format(x, y, phi)
+
         print_info = False
 
