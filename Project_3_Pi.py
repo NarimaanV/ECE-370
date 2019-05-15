@@ -19,20 +19,22 @@ head = 0.0
 
 print_info = False
 
+print "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+
 while True:
     key = getkey()
 
     if key == keys.UP:
         if translational == 0.0:
-            translational = 50.0
+            translational = 40.0
         else:
-            translational += 25.0
+            translational += 15.0
         mode = 0
     elif key == keys.DOWN:
-        if translational <= 50.0:
+        if translational <= 40.0:
             translational = 0.0
         else:
-            translational -= 25.0
+            translational -= 15.0
         mode = 0
     elif key == keys.LEFT:
         angle -= 15.0

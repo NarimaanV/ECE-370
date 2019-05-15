@@ -50,7 +50,7 @@ int packetSize;
 
 unsigned int reset = 0;
 
-float desired_angle, start_angle, error, control, K_p = 8.0;
+float desired_angle, start_angle, error, control, K_p = 4.0;
 
 unsigned int send_port = 4242, receive_port = 5005;
 unsigned long tick_time, tock_time, desired_control_time = 10;
@@ -183,8 +183,8 @@ void loop()
     else
       error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
 
-    if (abs(error) < 5.0)
-      error = 0.0;
+//    if (abs(error) < 5.0)
+//      error = 0.0;
     
     control = error * K_p;
   
@@ -208,7 +208,7 @@ void rotate(double omega)
   else if (s > 200.0f)
     s = 200.0f;
   
-  if (omega > 0.0)
+  if (omega > 10.0)
   {
     analogWrite(MOTOR_LEFT_REVERSE, 0);
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
@@ -216,7 +216,7 @@ void rotate(double omega)
     analogWrite(MOTOR_LEFT_FORWARD, (int)s);
   }
 
-  else if (omega < 0.0)
+  else if (omega < -10.0)
   {
      analogWrite(MOTOR_RIGHT_REVERSE, 0);
     analogWrite(MOTOR_LEFT_FORWARD, 0);
