@@ -59,6 +59,7 @@ WiFiUDP Udp;
 
 void setup()
 {
+  // Pins setup
   pinMode(MOTOR_RIGHT_A, OUTPUT);
   pinMode(MOTOR_RIGHT_B, OUTPUT);
   pinMode(MOTOR_LEFT_A, OUTPUT);
@@ -73,7 +74,8 @@ void setup()
   attachInterrupt(digitalPinToInterrupt(IR_LEFT), analytical_odometry_left, RISING);
   WiFi.setPins(8, 7, 4, 2);
   Serial.begin(9600);
-//  while (!Serial);
+
+  // Connect to WiFi
   while ( status != WL_CONNECTED)
   {
     Serial.print("Attempting to connect to WPA SSID: ");
@@ -93,6 +95,7 @@ void setup()
   // if you get a connection, report back via serial:
   Udp.begin(localPort);
 
+  // Initialize odometry
   cur_info.x = 0.0;
   cur_info.y = 0.0;
   cur_info.phi = 0.0;
@@ -100,6 +103,7 @@ void setup()
 
 void loop()
 {
+  // Read incoming packet and respond with current odometry
   if (packetSize = Udp.parsePacket())
   {
     Udp.read((char*)(&input_command), sizeof(command));
@@ -108,12 +112,15 @@ void loop()
     Udp.endPacket();
   }
 
+  // Calculate speed for each wheel
   right_speed = ((2.0 * input_command.translational) + (input_command.rotational * BASELINE)) / (2.0 * RADIUS);
   left_speed = ((2.0 * input_command.translational) - (input_command.rotational * BASELINE)) / (2.0 * RADIUS);
 
+  // Set limit to each speed
   if (right_speed > 255) right_speed = 255;
   if (left_speed > 255) left_speed = 255;
-  
+
+  // Move motors
   analogWrite(MOTOR_RIGHT_A, right_speed);
   analogWrite(MOTOR_LEFT_A, left_speed);
 

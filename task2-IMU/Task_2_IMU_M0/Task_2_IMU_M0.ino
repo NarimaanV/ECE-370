@@ -89,24 +89,34 @@ void setup()
 
 void loop()
 {
-  
-  
   while (1)
   {
     // Get time at beginning of P controller loop
     tick_time = millis();
     time_b = millis();
+
+    // Move to next direction
     if (time_b - time_a >= 10000 && current <= 4)
     {
       time_a = time_b;
       current++;
     }
+    
+    // Read incoming packet and respond with current odometry
+    if (packetSize = Udp.parsePacket())
+    {
+      Udp.read((char*)(&input_command), sizeof(command));
+      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+      Udp.write((char*)(&cur_info), sizeof(cur_info));
+      Udp.endPacket();
+    }
+    
 
     desired_angle = angles[current];
     
     int packetSize = Udp.parsePacket();
     compass.read();
-    cur_info.phi = compass.heading();
+    cur_info.phi = compass.compass.heading((LSM303::vector<int>){-1, 0, 0});
     
     if (packetSize)
     {
@@ -120,12 +130,12 @@ void loop()
       Udp.endPacket();
     }
 
-    error = abs(desired_angle - compass.heading());
+    error = abs(desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0}));
 
     if (error > 180.0f)
       error = 360.0f - error;
     else
-      error = desired_angle - compass.heading();
+      error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
     
     control = error * K_p;
 
