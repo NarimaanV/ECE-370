@@ -33,9 +33,9 @@ struct __attribute__((__packed__)) command
 
 struct __attribute__((__packed__)) robot_info
 {
-  double odo[3];
-  double imu[6];
-  double head;
+  double odo[3];  // x, y, z positions
+  double imu[6];  // x, y, z accelerations and x, y, z magnetisms
+  double head;  // Current IMU heading. NOTE: Not named "heading" because that's the name of a function
 } cur_info = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0, 0.0, 0.0, 0.0}, 0.0};
 
 //char ssid[] = "Narimaan-M0";
@@ -50,10 +50,11 @@ int packetSize;
 
 unsigned int reset = 0;
 
-float desired_angle, start_angle, error, control, K_p = 3.0;
+float desired_angle, start_angle, error, control, K_p = 8.0;
 
 unsigned int send_port = 4242, receive_port = 5005;
 unsigned long tick_time, tock_time, desired_control_time = 10;
+double odometry_phi = 0.0;
 
 // Phi angle radians per single tick
 // (RADIUS/BASELINE) phi radians/wheel radians 
@@ -111,19 +112,27 @@ void setup()
   printWiFiData();
   
   send_udp.begin(send_port);
-//  receive_udp.begin(receive_port);
 
-  info_time = millis();
+  compass.read();
+  start_angle = compass.heading((LSM303::vector<int>){-1, 0, 0});
+  cur_info.head = start_angle;
   cur_info.odo[0] = 0.0;
   cur_info.odo[1] = 0.0;
   cur_info.odo[2] = 0.0;
-//  compass.read();
-//  start_angle = compass.heading((LSM303::vector<int>){-1, 0, 0});
 }
 
 void loop()
 {
   tick_time = millis();
+
+  compass.read();
+  cur_info.imu[0] = (double)compass.a.x * -9.80665 * 0.061 / 1000.0;  // Convert from bits to m/s^2
+  cur_info.imu[1] = (double)compass.a.y * -9.80665 * 0.061 / 1000.0;  // Convert from bits to m/s^2
+  cur_info.imu[2] = (double)compass.a.z * -9.80665 * 0.061 / 1000.0;  // Convert from bits to m/s^2
+  cur_info.imu[3] = (double)compass.m.x * 0.160 / 1000.0; // Convert from bits to gauss
+  cur_info.imu[4] = (double)compass.m.y * 0.160 / 1000.0; // Convert from bits to gauss
+  cur_info.imu[5] = (double)compass.m.z * 0.160 / 1000.0; // Convert from bits to gauss
+  cur_info.head = compass.heading((LSM303::vector<int>){-1, 0, 0}); // Save heading
   
   if (packetSize = send_udp.parsePacket())
   {
@@ -131,21 +140,32 @@ void loop()
     send_udp.beginPacket(send_udp.remoteIP(), send_udp.remotePort());
     send_udp.write((char*)&cur_info, sizeof(cur_info));
     send_udp.endPacket();
-    Serial.println(input_command.translational);
-    Serial.println(input_command.angle);
-    Serial.println(input_command.mode);
-    Serial.println("Sent!");
-    info_time = millis();
   }
   
-//  compass.read();
-//  cur_info.odo[2] = compass.heading((LSM303::vector<int>){-1, 0, 0});
   acc_y = (float)compass.a.y * 0.061 / 1000.0;
 
-  if (acc_y > 1.15f)
+  if (acc_y > 1.15)
   {
     rotate(0.0);
     reset = 1;
+  }
+
+  // Relative angle mode since arrow keys are being used
+  if (input_command.mode == 0)
+  {
+//    K_p = 3.0;
+    desired_angle = start_angle + input_command.angle;
+    if (desired_angle > 360.0f)
+      desired_angle -= 360.0f;
+    else if (desired_angle < 0.0f)
+      desired_angle += 360.0f;
+  }
+
+  // Absolute angle mode since WASD is being used to go in the cardinal directions
+  else if (input_command.mode == 1)
+  {
+//    K_p = 5.0;
+    desired_angle = input_command.angle;
   }
 
   if (!reset)
@@ -162,11 +182,16 @@ void loop()
       error = 360.0f - error;
     else
       error = desired_angle - compass.heading((LSM303::vector<int>){-1, 0, 0});
+
+    if (abs(error) < 5.0)
+      error = 0.0;
     
     control = error * K_p;
   
     rotate(control);
   }
+
+
 
   // Get time at end of P controller loop
   tock_time = millis();
@@ -175,27 +200,27 @@ void loop()
   delay(desired_control_time - (tock_time - tick_time));
 }
 
-void rotate(float omega)
+void rotate(double omega)
 {
-  float s = abs(omega);
+  double s = abs(omega);
   if (s < 30.0f)
     s = 30.0f;
   else if (s > 200.0f)
     s = 200.0f;
   
-  if (omega > 0.0f)
+  if (omega > 0.0)
   {
     analogWrite(MOTOR_LEFT_REVERSE, 0);
     analogWrite(MOTOR_RIGHT_FORWARD, 0);
-    analogWrite(MOTOR_RIGHT_REVERSE, (int)s);
+    analogWrite(MOTOR_RIGHT_REVERSE, 0);
     analogWrite(MOTOR_LEFT_FORWARD, (int)s);
   }
 
-  else if (omega < 0.0f)
+  else if (omega < 0.0)
   {
      analogWrite(MOTOR_RIGHT_REVERSE, 0);
     analogWrite(MOTOR_LEFT_FORWARD, 0);
-    analogWrite(MOTOR_LEFT_REVERSE, (int)s);
+    analogWrite(MOTOR_LEFT_REVERSE, 0);
     analogWrite(MOTOR_RIGHT_FORWARD, (int)s);
   }
 
@@ -262,19 +287,15 @@ void printMacAddress(byte mac[]) {
 // ISR for calculating odometry of right wheel based on IR sensor signal using analytical method
 void analytical_odometry_right()
 { 
-  cur_info.odo[2] *= (PI / 180.0);
-  cur_info.odo[2] += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
-  cur_info.odo[0] += (delta_x * cos(cur_info.odo[2])) + (delta_y * sin(cur_info.odo[2]));  // Update global x based on global phi and local delta x and y
-  cur_info.odo[1] += (delta_x * sin(cur_info.odo[2])) + (delta_y * cos(cur_info.odo[2]));  // Update global y based on global phi and local delta x and y
-  cur_info.odo[2] *= (180.0 / PI);
+  odometry_phi += phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  cur_info.odo[0] += (delta_x * cos(odometry_phi)) + (delta_y * sin(odometry_phi));  // Update global x based on global phi and local delta x and y
+  cur_info.odo[1] += (delta_x * sin(odometry_phi)) + (delta_y * cos(odometry_phi));  // Update global y based on global phi and local delta x and y
 }
 
 // ISR for calculating odometry of left wheel based on IR sensor signal using analytical method
 void analytical_odometry_left()
 {
-  cur_info.odo[2] *= (PI / 180.0);
-  cur_info.odo[2] -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
-  cur_info.odo[0] += (delta_x * cos(cur_info.odo[2])) + (delta_y * sin(cur_info.odo[2]));  // Update global x based on global phi and local delta x and y
-  cur_info.odo[1] -= (delta_x * sin(cur_info.odo[2])) + (delta_y * cos(cur_info.odo[2]));  // Update global y based on global phi and local delta x and y
-  cur_info.odo[2] *= (180.0 / PI);
+  odometry_phi -= phi_radians_per_tick; // Calculate new global phi angle based on ratio between phi radians and ticks
+  cur_info.odo[0] += (delta_x * cos(odometry_phi)) + (delta_y * sin(odometry_phi));  // Update global x based on global phi and local delta x and y
+  cur_info.odo[1] -= (delta_x * sin(odometry_phi)) + (delta_y * cos(odometry_phi));  // Update global y based on global phi and local delta x and y
 }
